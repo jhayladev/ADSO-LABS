@@ -1,0 +1,768 @@
+/* ═══════════════════════════════════════════════════════════════
+   PerfilInstructor.razor.css — ADSO Labs
+   Paleta: #3B82F6 (azul) · #4F46E5 (indigo) · #6D28D9 (violeta)
+   Fondo: #F4F6FB · Tarjetas: #FFFFFF
+   NOTA: NO usar var() — el scope de Blazor rompe :root variables.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Base ──────────────────────────────────────────────────── */
+.pi-root {
+    background: transparent;
+    min-height: 100vh;
+    padding: 2rem 2.5rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.pi-titulo {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin-bottom: .2rem;
+}
+
+.pi-subtitulo {
+    font-size: .9rem;
+    color: #94A3B8;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+/* ── Cargando ─────────────────────────────────────────────── */
+.pi-cargando {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: 1rem;
+    color: #64748B;
+    font-size: .9rem;
+}
+
+.pi-spinner { color: #3B82F6 !important; width: 3rem; height: 3rem; }
+
+/* ── Tarjeta base ─────────────────────────────────────────── */
+.pi-card {
+    background: #FFFFFF;
+    border-radius: 20px;
+    box-shadow: 0 2px 18px rgba(59, 130, 246, .07), 0 1px 4px rgba(0,0,0,.04);
+    padding: 1.5rem;
+    border: 1px solid rgba(226, 232, 240, .7);
+}
+
+/* ── Cabecera de tarjeta ──────────────────────────────────── */
+.pi-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.25rem;
+    position: relative;
+    z-index: 10;
+}
+
+.pi-card-titulo {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1E293B;
+    margin: 0;
+}
+
+.pi-card-subtitulo {
+    font-size: .74rem;
+    color: #94A3B8;
+    margin: .15rem 0 0;
+}
+
+.pi-card-icon {
+    font-size: 1.2rem;
+    color: #898F96;
+    opacity: .8;
+}
+
+/* ── Vacío ───────────────────────────────────────────────── */
+.pi-vacio {
+    color: #94A3B8;
+    font-size: .85rem;
+    text-align: center;
+    padding: 2rem 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TARJETA DE PERFIL
+   ═══════════════════════════════════════════════════════════ */
+.pi-perfil-card {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+/* Avatar con iniciales */
+.pi-avatar {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3B82F6, #6D28D9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, .35);
+    flex-shrink: 0;
+}
+
+.pi-iniciales {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: 3px;
+    line-height: 1;
+}
+
+/* Info de nombre + badge + especialidad */
+.pi-perfil-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .3rem;
+    flex: 1;
+    min-width: 160px;
+}
+
+.pi-perfil-nombre {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.pi-perfil-esp-label {
+    font-size: .72rem;
+    color: #94A3B8;
+    margin: .35rem 0 0;
+    font-weight: 500;
+}
+
+.pi-perfil-esp-valor {
+    font-size: .9rem;
+    color: #1E293B;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Divisor vertical */
+.pi-divider-v {
+    width: 1px;
+    height: 80px;
+    background: #E2E8F0;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+/* Contacto */
+.pi-contacto-lista {
+    display: flex;
+    flex-direction: column;
+    gap: .85rem;
+    flex: 2;
+    min-width: 200px;
+}
+
+.pi-contacto-item {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+}
+
+.pi-contacto-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #EEF2FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4F46E5;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.pi-contacto-label {
+    display: block;
+    font-size: .68rem;
+    color: #94A3B8;
+    font-weight: 500;
+    line-height: 1.1;
+}
+
+.pi-contacto-valor {
+    display: block;
+    font-size: .85rem;
+    color: #1E293B;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LAYOUT PRINCIPAL (columna única vertical)
+   ═══════════════════════════════════════════════════════════ */
+.pi-main-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.pi-col-izq { display: flex; flex-direction: column; }
+.pi-col-der { display: flex; flex-direction: column; }
+
+/* ── Tarjeta de tabs ──────────────────────────────────────── */
+.pi-tabs-card { padding: 0; overflow: visible; }
+
+.pi-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1.5px solid #F1F5F9;
+    padding: 1rem 1.5rem 0;
+}
+
+.pi-tab {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    background: none;
+    border: none;
+    border-bottom: 2.5px solid transparent;
+    padding: .65rem 1.1rem;
+    margin-bottom: -1.5px;
+    font-family: 'Poppins', sans-serif;
+    font-size: .88rem;
+    font-weight: 500;
+    color: #94A3B8;
+    cursor: pointer;
+    transition: color .2s, border-color .2s;
+    outline: none;
+}
+
+.pi-tab:hover { color: #4F46E5; }
+
+.pi-tab-activo {
+    color: #4F46E5;
+    border-bottom-color: #4F46E5;
+    font-weight: 600;
+}
+
+.pi-tab-content { padding: 1.25rem 1.5rem 1.5rem; }
+
+/* ── Lista de fichas ───────────────────────────────────────── */
+.pi-fichas-lista {
+    display: flex;
+    flex-direction: column;
+    gap: .85rem;
+}
+
+.pi-fichas-lista.pi-scroll {
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.pi-fichas-lista.pi-scroll::-webkit-scrollbar { width: 5px; }
+.pi-fichas-lista.pi-scroll::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 99px; }
+.pi-fichas-lista.pi-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+
+.pi-ficha-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .9rem 1rem;
+    border: 1px solid #F1F5F9;
+    border-radius: 14px;
+    background: #FAFBFF;
+    transition: box-shadow .18s;
+}
+
+.pi-ficha-row:hover {
+    box-shadow: 0 4px 14px rgba(59, 130, 246, .10);
+    border-color: #DBEAFE;
+}
+
+.pi-ficha-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.pi-icon-verde { background: #D1FAE5; color: #059669; }
+.pi-icon-azul  { background: #DBEAFE; color: #2563EB; }
+.pi-icon-gris  { background: #F1F5F9; color: #94A3B8; }
+
+.pi-ficha-info {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.pi-ficha-num {
+    font-size: .95rem;
+    font-weight: 700;
+    color: #1E293B;
+}
+
+.pi-ficha-prog {
+    font-size: .75rem;
+    color: #64748B;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pi-ficha-meta {
+    font-size: .68rem;
+    color: #94A3B8;
+}
+
+/* Columna de progreso */
+.pi-ficha-prog-col {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    width: 130px;
+    flex-shrink: 0;
+}
+
+.pi-comp-prog-col {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    width: 120px;
+    flex-shrink: 0;
+}
+
+.pi-prog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pi-prog-label {
+    font-size: .65rem;
+    color: #94A3B8;
+    font-weight: 500;
+}
+
+.pi-prog-pct {
+    font-size: .78rem;
+    font-weight: 700;
+    color: #1E293B;
+}
+
+.pi-prog-track {
+    height: 7px;
+    background: #E8EDF5;
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.pi-prog-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #4F46E5, #3B82F6);
+    transition: width .4s ease;
+}
+
+.pi-prog-verde { background: #10B981; }
+.pi-prog-azul  { background: linear-gradient(90deg, #4F46E5, #3B82F6); }
+.pi-prog-gris  { background: #CBD5E1; }
+
+/* Derecha de fila: badge + botón */
+.pi-ficha-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .5rem;
+    flex-shrink: 0;
+}
+
+.pi-comp-right {
+    flex-shrink: 0;
+}
+
+/* ── Badges ──────────────────────────────────────────────── */
+.pi-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 12px;
+    border-radius: 99px;
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.pi-badge-ok   { background: #D1FAE5; color: #059669; }
+.pi-badge-off  { background: #FEE2E2; color: #DC2626; }
+.pi-badge-info { background: #DBEAFE; color: #2563EB; }
+.pi-badge-gris { background: #F1F5F9; color: #6B7280; }
+
+/* ── Botones ─────────────────────────────────────────────── */
+.pi-btn-detalle {
+    background: #3B82F6;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    padding: 5px 14px;
+    font-family: 'Poppins', sans-serif;
+    font-size: .75rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: background .15s;
+}
+
+.pi-btn-detalle:hover { background: #2563EB; }
+
+.pi-btn-ver-mas {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    background: none;
+    border: none;
+    color: #3B82F6;
+    font-family: 'Poppins', sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: .5rem 0 0;
+    outline: none;
+    margin-top: .5rem;
+}
+
+.pi-btn-ver-mas:hover { color: #2563EB; }
+
+/* ── Competencias ────────────────────────────────────────── */
+.pi-comp-lista {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+}
+
+.pi-comp-lista.pi-scroll {
+    max-height: 480px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.pi-comp-lista.pi-scroll::-webkit-scrollbar { width: 5px; }
+.pi-comp-lista.pi-scroll::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 99px; }
+.pi-comp-lista.pi-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+
+.pi-comp-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .85rem 1rem;
+    border: 1px solid #F1F5F9;
+    border-radius: 14px;
+    background: #FAFBFF;
+    transition: box-shadow .18s;
+}
+
+.pi-comp-row:hover {
+    box-shadow: 0 4px 14px rgba(59, 130, 246, .10);
+    border-color: #DBEAFE;
+}
+
+.pi-comp-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.pi-comp-info {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.pi-comp-nombre {
+    font-size: .85rem;
+    font-weight: 700;
+    color: #1E293B;
+    line-height: 1.3;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.pi-comp-codigo {
+    font-size: .7rem;
+    color: #94A3B8;
+}
+
+/* ── Dropdown de fichas ──────────────────────────────────── */
+.pi-dropdown-wrap {
+    position: relative;
+    display: inline-block;
+    z-index: 9999;
+}
+
+.pi-ficha-pill {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    background: #EEF2FF;
+    border: 1px solid #C7D2FE;
+    border-radius: 10px;
+    padding: .5rem 1rem;
+    font-family: 'Poppins', sans-serif;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #4F46E5;
+    cursor: pointer;
+    outline: none;
+}
+
+.pi-ficha-pill:hover { background: #E0E7FF; }
+
+.pi-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 160px;
+    background: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    border: 1px solid #E2E8F0;
+    z-index: 99999;
+}
+
+.pi-dropdown-item {
+    padding: .7rem 1rem;
+    font-size: .82rem;
+    color: #1E293B;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.pi-dropdown-item:first-child { border-radius: 12px 12px 0 0; }
+.pi-dropdown-item:last-child  { border-radius: 0 0 12px 12px; }
+.pi-dropdown-item:hover { background: #F0F4FF; color: #4F46E5; }
+
+.pi-dropdown-todas {
+    font-weight: 700;
+    color: #4F46E5;
+    background: #EEF2FF;
+    border-bottom: 1px solid #E0E7FF;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.pi-dropdown-todas:hover { background: #E0E7FF; }
+
+/* ═══════════════════════════════════════════════════════════
+   AVISOS (columna derecha)
+   ═══════════════════════════════════════════════════════════ */
+.pi-avisos-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 300px;
+}
+
+.pi-aviso-lista {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.pi-aviso-item {
+    display: flex;
+    align-items: flex-start;
+    gap: .85rem;
+    padding: .85rem .25rem;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.pi-aviso-item:last-child { border-bottom: none; }
+
+/* Dot de color */
+.pi-aviso-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: .25rem;
+}
+
+.pi-dot-naranja { background: #F59E0B; box-shadow: 0 0 0 3px rgba(245,158,11,.2); }
+.pi-dot-rojo    { background: #EF4444; box-shadow: 0 0 0 3px rgba(239,68,68,.2); }
+.pi-dot-amarillo { background: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
+
+.pi-aviso-texto {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+
+.pi-aviso-titulo {
+    font-size: .82rem;
+    font-weight: 600;
+    color: #1E293B;
+    line-height: 1.3;
+}
+
+.pi-aviso-desc {
+    font-size: .72rem;
+    color: #94A3B8;
+    line-height: 1.4;
+}
+
+/* Badge con ícono a la derecha */
+.pi-aviso-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 99px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .78rem;
+    flex-shrink: 0;
+}
+
+.pi-aviso-num-naranja { background: #FEF3C7; color: #D97706; }
+.pi-aviso-num-rojo    { background: #FEE2E2; color: #DC2626; }
+.pi-aviso-num-amarillo { background: #DBEAFE; color: #2563EB; }
+
+/* Sin avisos */
+.pi-aviso-vacio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: .75rem;
+    color: #CBD5E1;
+    padding: 3rem 0;
+    font-size: .85rem;
+}
+
+.pi-aviso-vacio .bi { font-size: 2.5rem; }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+/* ── Edición de contacto ──────────────────────────────────── */
+.pi-btn-editar-contacto {
+    margin-top: 1rem;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .4rem .9rem;
+    border: 1.5px solid #3B82F6;
+    border-radius: 8px;
+    background: transparent;
+    color: #3B82F6;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.pi-btn-editar-contacto:hover { background: #EFF6FF; }
+
+.pi-form-edicion {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+}
+
+.pi-form-grupo { display: flex; flex-direction: column; gap: .25rem; }
+
+.pi-form-label {
+    font-size: .75rem;
+    font-weight: 600;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+
+.pi-input {
+    padding: .45rem .75rem;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 8px;
+    font-size: .875rem;
+    color: #1E293B;
+    outline: none;
+    transition: border-color .15s;
+}
+.pi-input:focus { border-color: #3B82F6; }
+
+.pi-edicion-msg {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .8rem;
+    font-weight: 500;
+    padding: .4rem .75rem;
+    border-radius: 7px;
+}
+.pi-msg-ok  { color: #15803D; background: #F0FDF4; }
+.pi-msg-err { color: #DC2626; background: #FEF2F2; }
+
+.pi-form-acciones { display: flex; gap: .6rem; }
+
+.pi-btn-guardar {
+    padding: .4rem 1.1rem;
+    background: linear-gradient(135deg, #3B82F6, #4F46E5);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s;
+}
+.pi-btn-guardar:disabled { opacity: .6; cursor: not-allowed; }
+
+.pi-btn-cancelar {
+    padding: .4rem 1rem;
+    background: transparent;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 8px;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #64748B;
+    cursor: pointer;
+    transition: background .15s;
+}
+.pi-btn-cancelar:hover { background: #F8FAFC; }
+
+@media (max-width: 1100px) {
+    .pi-perfil-card { flex-wrap: wrap; }
+    .pi-divider-v { display: none; }
+}
+
+@media (max-width: 640px) {
+    .pi-root { padding: 1rem 1.1rem; }
+    .pi-titulo { font-size: 1.5rem; }
+    .pi-ficha-prog-col { display: none; }
+    .pi-comp-prog-col  { display: none; }
+}

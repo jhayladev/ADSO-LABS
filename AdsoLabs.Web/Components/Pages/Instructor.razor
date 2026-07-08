@@ -1,0 +1,254 @@
+@page "/instructor"
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@using System.Diagnostics
+@using AdsoLabs.Application.DTOs.Competencia
+@using AdsoLabs.Application.DTOs.Instructor
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@rendermode InteractiveServer
+@inject NavigationManager nav
+@inject InstructorApiService InstructorApiService
+@inject CompetenciaApiService CompetenciaApiService
+
+@* ── Modal de competencias ── *@
+@if (mostrarModal && instructorModal is not null)
+{
+	<div class="modal-overlay" @onclick="CerrarModal">
+		<div class="modal-drawer" @onclick:stopPropagation="true">
+			<div class="modal-header">
+				<div class="modal-titulo">
+					<i class="bi bi-person-badge"></i>
+					<span>@instructorModal.Nombres</span>
+				</div>
+				<button class="btn-cerrar-modal" @onclick="CerrarModal">
+					<i class="bi bi-x-lg"></i>
+				</button>
+			</div>
+			<div class="modal-body">
+				<h4>Competencias asignadas</h4>
+				@if (!instructorModal.Competencias.Any())
+				{
+					<div class="sin-competencias">
+						<i class="bi bi-info-circle"></i>
+						<span>Este instructor no tiene competencias asignadas</span>
+					</div>
+				}
+				else
+				{
+					<ul class="lista-competencias">
+						@foreach (var comp in instructorModal.Competencias)
+						{
+							<li><i class="bi bi-check2-circle"></i> @comp</li>
+						}
+					</ul>
+				}
+			</div>
+		</div>
+	</div>
+}
+
+<section class="instructor">
+	<h1>Gestion de Instructores</h1>
+	<p class="instructor-subtitulo">Consulta, filtra y gestiona el equipo de instructores del programa.</p>
+
+	<div class="contenedor-instructor">
+		<h3>Filtrar Instructores</h3>
+
+		<div class="filtro">
+			<div class="campo-select">
+				<label>Competencias</label>
+				<select @bind="competenciaSeleccionada">
+					<option value="">Seleccione una competencia</option>
+					@foreach (var c in competencias)
+					{
+						<option value="@c.NombreCompetencia">@c.NombreCompetencia</option>
+					}
+				</select>
+			</div>
+		</div>
+
+		<div class="filtros-busqueda">
+			<div class="campo-busqueda">
+				<i class="bi bi-search"></i>
+				<input placeholder="Buscar Instructor" @bind="busqueda" />
+			</div>
+			<button @onclick="Filtrar">Buscar Instructor</button>
+		</div>
+
+		<div class="datos-instructores">
+			<div class="data total">
+				<h1>Total Instructores</h1>
+				<h2>@resumen.TotalInstructores</h2>
+			</div>
+			<div class="data activos">
+				<h1>Instructores Activos</h1>
+				<h2>@resumen.TotalInstructoresActivos</h2>
+			</div>
+			<div class="data riesgos">
+				<h1>Instructores Técnicos</h1>
+				<h2>@resumen.TotalInstructoresTecnicos</h2>
+			</div>
+		</div>
+
+		<div class="tabla-instructores">
+
+			<div class="header-tabla">
+				<span class="col-nombre">Nombre</span>
+				<span class="col-especialidad">Especialidad</span>
+				<span class="col-vinculacion">Tipo de Vinculación</span>
+				<span class="col-estado">Estado</span>
+			</div>
+
+			@if (!instructoresPaginados.Any())
+			{
+				<div class="fila-vacia">
+					<span>No hay instructores registrados</span>
+				</div>
+			}
+			else
+			{
+				@foreach (var instructor in instructoresPaginados)
+				{
+					<div class="fila" @onclick="() => IrAPerfilInstructor(instructor.IdInstructor)">
+
+						<div class="col-nombre nombre">
+							<div class="avatar-mini">@Iniciales(instructor.Nombres)</div>
+							<div class="nombre-info">
+								<span class="nombre-texto">@instructor.Nombres</span>
+								<span class="nombre-sub">@(instructor.Competencias.Count) competencia@(instructor.Competencias.Count != 1 ? "s" : "")</span>
+							</div>
+						</div>
+
+						<span class="col-especialidad celda-texto">
+							@(string.IsNullOrEmpty(instructor.Especialidad) ? "—" : instructor.Especialidad)
+						</span>
+
+						<span class="col-vinculacion celda-texto">
+							@(string.IsNullOrEmpty(instructor.TipoVinculacion) ? "—" : instructor.TipoVinculacion)
+						</span>
+
+						<div class="col-estado" @onclick:stopPropagation="true">
+							<button class="toggle-switch @(instructor.Activo ? "toggle-on" : "toggle-off")"
+									@onclick="() => ToggleEstado(instructor.IdInstructor)"
+									title="@(instructor.Activo ? "Desactivar instructor" : "Activar instructor")">
+								<span class="toggle-thumb"></span>
+							</button>
+							<span class="toggle-label">@(instructor.Activo ? "Activo" : "Inactivo")</span>
+						</div>
+
+					</div>
+				}
+			}
+
+			<div class="paginacion">
+				<span class="info-registros">
+					@inicioRegistro - @finRegistro de @instructores.Count instructores
+				</span>
+				<div class="grupo-paginacion">
+					<button class="btn-pag" @onclick="PaginaAnterior" disabled="@(paginaActual == 1)">
+						<i class="bi bi-chevron-left"></i>
+					</button>
+					<span class="pagina-info">Página @paginaActual de @totalPaginas</span>
+					<button class="btn-pag" @onclick="PaginaSiguiente" disabled="@(paginaActual == totalPaginas)">
+						<i class="bi bi-chevron-right"></i>
+					</button>
+				</div>
+			</div>
+		</div>
+
+		<div class="btns-group">
+			<button class="add-instructores" @onclick="Navegar">Agregar Instructores</button>
+		</div>
+	</div>
+
+</section>
+
+@code {
+
+	List<InstructorListadoDTO> instructores = [];
+	List<CompetenciaDTO> competencias = [];
+	ResumenInstructorDto resumen = new();
+
+	string competenciaSeleccionada;
+	string busqueda = "";
+	int paginaActual = 1;
+	int registrosPorPagina = 6;
+
+	// ── Modal ────────────────────────────────────────────────────────────────
+	InstructorListadoDTO? instructorModal;
+	bool mostrarModal;
+
+	void AbrirModal(InstructorListadoDTO instructor)
+	{
+		instructorModal = instructor;
+		mostrarModal = true;
+	}
+
+	void CerrarModal() => mostrarModal = false;
+
+	void Navegar() => nav.NavigateTo("/registro-instructor");
+
+	void IrAPerfilInstructor(int idInstructor) => nav.NavigateTo($"/perfil-instructor/{idInstructor}");
+
+	protected override async Task OnInitializedAsync()
+	{
+		instructores = await InstructorApiService.ObtenerInstructoresAsync();
+		competencias = await CompetenciaApiService.ObtenerCompetenciasAsync();
+		resumen = await InstructorApiService.ObtenerResumenInstructoresAsync();
+	}
+
+	private async Task ToggleEstado(int idInstructor)
+	{
+		await InstructorApiService.EditarInstructorAsync(idInstructor);
+		instructores = await InstructorApiService.FiltrarInstructoresAsync(competenciaSeleccionada, busqueda);
+		resumen = await InstructorApiService.ObtenerResumenInstructoresAsync(competenciaSeleccionada, busqueda);
+		// Sync modal if it's showing this instructor
+		if (mostrarModal && instructorModal?.IdInstructor == idInstructor)
+			instructorModal = instructores.FirstOrDefault(i => i.IdInstructor == idInstructor);
+		StateHasChanged();
+	}
+
+	private async Task Filtrar()
+	{
+		if (string.IsNullOrEmpty(competenciaSeleccionada) && string.IsNullOrEmpty(busqueda))
+		{
+			instructores = await InstructorApiService.ObtenerInstructoresAsync();
+			resumen = await InstructorApiService.ObtenerResumenInstructoresAsync();
+			StateHasChanged();
+			return;
+		}
+		instructores = await InstructorApiService.FiltrarInstructoresAsync(competenciaSeleccionada, busqueda);
+		resumen = await InstructorApiService.ObtenerResumenInstructoresAsync(competenciaSeleccionada, busqueda);
+		StateHasChanged();
+	}
+
+	IEnumerable<InstructorListadoDTO> instructoresPaginados =>
+		instructores
+		.Skip((paginaActual - 1) * registrosPorPagina)
+		.Take(registrosPorPagina);
+
+	int totalPaginas =>
+		(int)Math.Ceiling((double)instructores.Count / registrosPorPagina);
+
+	int inicioRegistro => (paginaActual - 1) * registrosPorPagina + 1;
+	int finRegistro => Math.Min(paginaActual * registrosPorPagina, instructores.Count);
+
+	void PaginaAnterior()
+	{
+		if (paginaActual > 1) paginaActual--;
+	}
+
+	void PaginaSiguiente()
+	{
+		if (paginaActual < totalPaginas) paginaActual++;
+	}
+
+	private static string Iniciales(string nombre)
+	{
+		var partes = nombre.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		return partes.Length >= 2
+			? $"{partes[0][0]}{partes[1][0]}".ToUpperInvariant()
+			: partes.Length == 1 ? partes[0][0].ToString().ToUpperInvariant()
+			: "?";
+	}
+}

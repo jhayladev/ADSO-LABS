@@ -1,0 +1,651 @@
+body {
+    background-color: #F4F6FB;
+}
+
+/* ── Encabezado ──────────────────────────────────────────────── */
+.aprendices {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 2rem;
+}
+
+.aprendices h1 {
+    font-size: 2rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    color: #1E293B;
+    margin-top: 2rem;
+    margin-bottom: .2rem;
+}
+
+.aprendices h2 {
+    font-size: 0.9rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    color: #64748B;
+    margin-bottom: 0.25rem;
+}
+
+.aprendices-subtitulo {
+    font-size: .9rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    color: #94A3B8;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+/* ── Contenedor principal ────────────────────────────────────── */
+.contenedor-aprendices {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: white;
+    box-shadow: 0 2px 20px rgba(59,130,246,.07);
+    border: 1px solid #F1F5F9;
+    border-radius: 20px;
+    padding: 1.5rem;
+    gap: 1.25rem;
+    margin-top: 0.75rem;
+    margin-bottom: 4rem;
+}
+
+.contenedor-aprendices h3 {
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #1E293B;
+    margin: 0;
+}
+
+/* ── Fila de filtros ─────────────────────────────────────────── */
+.filtro {
+    display: flex;
+    gap: 0.875rem;
+}
+
+.campo-select {
+    display: flex;
+    align-items: center;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    background: #F8FAFC;
+    flex: 1;
+    position: relative;
+}
+
+.campo-select label {
+    color: #94A3B8;
+    margin-right: 0.75rem;
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.campo-select ::deep select {
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #1E293B;
+    appearance: none;
+}
+
+.campo-select::after {
+    content: "▼";
+    position: absolute;
+    right: 14px;
+    font-size: 0.6875rem;
+    color: #94A3B8;
+    pointer-events: none;
+}
+
+.campo {
+    display: flex;
+    align-items: center;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    background: #F8FAFC;
+    flex: 1;
+}
+
+.campo label {
+    color: #94A3B8;
+    margin-right: 0.75rem;
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.campo input {
+    border: none;
+    background: transparent;
+    outline: none;
+    width: 100%;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+/* ── Barra de búsqueda + botón ───────────────────────────────── */
+.filtros-busqueda {
+    display: flex;
+    gap: 0.875rem;
+}
+
+.campo-busqueda {
+    position: relative;
+    flex: 1;
+}
+
+.campo-busqueda input {
+    width: 100%;
+    padding: 10px 14px 10px 40px;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    background: #F8FAFC;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    color: #1E293B;
+    outline: none;
+}
+
+.campo-busqueda i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94A3B8;
+    font-size: 1rem;
+}
+
+.filtros-busqueda button {
+    padding: 0 1.5rem;
+    height: 42px;
+    border-radius: 10px;
+    border: none;
+    background: #4F46E5;
+    color: white;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.filtros-busqueda button:hover {
+    background: #4338CA;
+}
+
+/* ── KPIs ────────────────────────────────────────────────────── */
+.datos-aprendices {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+}
+
+.data {
+    display: flex;
+    flex: 1;
+    height: 88px;
+    justify-content: space-between;
+    align-items: center;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+
+.data h1 {
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    max-width: 110px;
+}
+
+.data h2 {
+    font-size: 2rem;
+    color: #3B82F6;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+}
+
+.activos h2 {
+    color: #3B82F6;
+}
+
+.riesgos h2 {
+    color: #EF4444;
+}
+
+/* ── Alerta de error ─────────────────────────────────────────── */
+.alerta-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #FEE2E2;
+    color: #991B1B;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+/* ── Tabla de aprendices ─────────────────────────────────────── */
+.tabla-aprendices {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    /* overflow visible para que el dropdown no quede recortado */
+}
+
+.header-tabla {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.2fr);
+    background: #F8FAFC;
+    color: #64748B;
+    padding: 10px 20px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    justify-items: center;
+    border-bottom: 1px solid #E2E8F0;
+    border-radius: 12px 12px 0 0;
+}
+
+.header-tabla span:first-child {
+    justify-self: start;
+}
+
+.fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.2fr);
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid #F1F5F9;
+    justify-items: center;
+    transition: background .12s ease;
+    cursor: pointer;
+}
+
+.fila:last-child {
+    border-bottom: none;
+}
+
+.fila:hover {
+    background: #F8F7FF;
+}
+
+.fila-inactiva {
+    cursor: default;
+}
+
+.fila-inactiva:hover {
+    background: transparent;
+}
+
+.fila-inactiva .nombre,
+.fila-inactiva .ficha,
+.fila-inactiva .indicador-badge {
+    opacity: 0.5;
+}
+
+.nombre {
+    display: flex;
+    align-items: center;
+    justify-self: start;
+    width: 100%;
+    gap: 10px;
+    min-width: 0;
+}
+
+.avatar-mini {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4F46E5, #3B82F6);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: .5px;
+}
+
+.nombre-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.nombre-texto {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1E293B;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nombre-sub {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 400;
+    color: #94A3B8;
+}
+
+.ficha {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    color: #374151;
+}
+
+.fila-vacia {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    color: #94A3B8;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* ── Chip de estado + dropdown ───────────────────────────────── */
+.estado-chip-wrapper {
+    position: relative;
+    display: inline-flex;
+    justify-content: center;
+}
+
+.estado-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 20px;
+    padding: 4px 10px;
+    min-width: 168px;
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    border: 1.5px solid transparent;
+    background: none;
+    line-height: 1;
+    transition: filter .15s ease, box-shadow .15s ease;
+}
+
+.estado-chip:hover {
+    filter: brightness(0.93);
+    box-shadow: 0 2px 6px rgba(0,0,0,.08);
+}
+
+/* Texto del chip: ocupa el espacio central, punto y chevron quedan fijos */
+.chip-dot + span {
+    flex: 1;
+    text-align: center;
+}
+
+.estado-chip-final {
+    justify-content: center;
+    cursor: default;
+    pointer-events: none;
+}
+
+.chip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: currentColor;
+    opacity: 0.7;
+}
+
+.chip-arrow {
+    font-size: 0.5625rem;
+    opacity: 0.65;
+}
+
+/* ── Panel del dropdown ──────────────────────────────────────── */
+.estado-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 220px;
+    background: white;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.10), 0 2px 8px rgba(0,0,0,.05);
+    z-index: 50;
+    overflow: hidden;
+    animation: menu-in .12s ease;
+}
+
+@keyframes menu-in {
+    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+.estado-menu-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    border-bottom: 1px solid #F1F5F9;
+    background: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background .1s ease;
+}
+
+.estado-menu-item:last-child {
+    border-bottom: none;
+}
+
+.estado-menu-item:hover {
+    background: #F8F7FF;
+}
+
+.menu-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+    background: currentColor;
+    opacity: 0.75;
+}
+
+.menu-item-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.menu-item-label {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.menu-item-warning {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.625rem;
+    font-weight: 500;
+    color: #B45309;
+}
+
+.menu-item-warning i {
+    font-size: 0.625rem;
+}
+
+/* ── Overlay para cerrar el menu ─────────────────────────────── */
+.estado-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 49;
+}
+
+/* ── Colores por estado ──────────────────────────────────────── */
+.estado-formacion  { background-color: #EFF6FF; color: #1D4ED8; border-color: #93C5FD; }
+.estado-cancelado  { background-color: #FEF2F2; color: #B91C1C; border-color: #FCA5A5; }
+.estado-trasladado { background-color: #ECFDF5; color: #065F46; border-color: #6EE7B7; }
+.estado-retiro     { background-color: #F5F3FF; color: #5B21B6; border-color: #C4B5FD; }
+.estado-default    { background-color: #F9FAFB; color: #6B7280; border-color: #D1D5DB; }
+
+/* ── Paginación ──────────────────────────────────────────────── */
+.paginacion {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid #F1F5F9;
+    border-radius: 0 0 12px 12px;
+    background: white;
+}
+
+.info-registros {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    color: #64748B;
+}
+
+.grupo-paginacion {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-pag {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 8px;
+    background: #4F46E5;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.btn-pag:hover:not(:disabled) {
+    background: #4338CA;
+}
+
+.btn-pag:disabled {
+    background: #CBD5E1;
+    cursor: not-allowed;
+}
+
+.pagina-info {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+    .datos-aprendices {
+        flex-wrap: wrap;
+    }
+
+    .data {
+        min-width: calc(50% - 0.5rem);
+    }
+}
+
+@media (max-width: 768px) {
+    .filtro,
+    .filtros-busqueda {
+        flex-direction: column;
+    }
+
+    .filtros-busqueda button {
+        width: 100%;
+    }
+
+    .campo-busqueda {
+        width: 100%;
+    }
+
+    .header-tabla,
+    .fila {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480.98px) {
+    .datos-aprendices {
+        flex-wrap: wrap;
+    }
+
+    .data {
+        min-width: 100%;
+    }
+
+    .estado-chip {
+        min-width: 0;
+    }
+}
+
+/* ── Badge indicador asistencia ──────────────────────────────── */
+.indicador-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    cursor: default;
+    white-space: nowrap;
+}
+
+.indicador-al-dia {
+    background: #DCFCE7;
+    color: #15803D;
+    border: 1px solid #BBF7D0;
+}
+
+.indicador-atrasado {
+    background: #FEE2E2;
+    color: #B91C1C;
+    border: 1px solid #FECACA;
+}
+
+.indicador-na {
+    background: #F1F5F9;
+    color: #94A3B8;
+    border: 1px solid #E2E8F0;
+}

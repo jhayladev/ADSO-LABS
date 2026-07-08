@@ -1,0 +1,1949 @@
+@page "/reportes"
+@using AdsoLabs.Application.DTOs.Reportes
+@using AdsoLabs.Application.DTOs.Fichas
+@using AdsoLabs.Application.DTOs.Aprendiz
+@using AdsoLabs.Application.DTOs.Informe
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@inject ReportesApiService ReportesApi
+@inject CompetenciaApiService CompetenciaApi
+@inject FichaApiService FichaApi
+@inject AprendizApiService AprendizApi
+@inject InformeAprendizApiService InformeApi
+@inject SesionService SesionService
+@inject IJSRuntime JS
+
+<PageTitle>Reportes</PageTitle>
+
+@if (inicializando)
+{
+    <div class="rp-cargando-inicial">
+        <div class="spinner-border rp-spinner" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="rp-cargando-txt">Cargando reportes...</p>
+    </div>
+}
+else
+{
+    <div class="rp-root">
+
+        <h1 class="rp-titulo">Reportes</h1>
+        <p class="rp-subtitulo">Generación de informes académicos por aprendiz, ficha o programa.</p>
+
+        @* ── Selector de tipo ── *@
+        <div class="rp-tabs">
+            @foreach (var tipo in TiposReporte)
+            {
+                <button class="rp-tab @(TipoActivo == tipo.Key ? "rp-tab-activo" : "")"
+                        @onclick="() => SeleccionarTipo(tipo.Key)">
+                    <i class="bi @tipo.Icono"></i>
+                    <span class="rp-tab-label">@tipo.Label</span>
+                </button>
+            }
+        </div>
+
+        @* ── Alerta de error ── *@
+        @if (errorMensaje is not null)
+        {
+            <div class="alert alert-danger rp-alerta-error">
+                <i class="bi bi-exclamation-octagon-fill me-2"></i>@errorMensaje
+            </div>
+        }
+
+        @* ── Tarjeta principal ── *@
+        <div class="rp-card">
+
+            @{
+                var tipoActual = TiposReporte.FirstOrDefault(t => t.Key == TipoActivo);
+            }
+            <div class="rp-card-header">
+                <div>
+                    <h6 class="rp-card-titulo">@tipoActual?.Label</h6>
+                    <p class="rp-card-subtitulo">@tipoActual?.Subtitulo</p>
+                </div>
+                @if (tipoActual is not null)
+                {
+                    <i class="bi @tipoActual.Icono rp-card-icon"></i>
+                }
+            </div>
+
+            @* ══════════════════════════════════════════════════════════
+               E — RESUMEN GLOBAL
+            ══════════════════════════════════════════════════════════ *@
+            @if (TipoActivo == "global")
+            {
+                <div class="rp-toolbar">
+                    <a class="rp-btn-excel" role="button" style="cursor:pointer" @onclick="DescargarExcelGlobal">
+                        <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+                    </a>
+                </div>
+
+                @if (cargando)
+                {
+                    <div class="rp-cargando-bloque">
+                        <div class="spinner-border rp-spinner" role="status"><span class="visually-hidden">Cargando...</span></div>
+                    </div>
+                }
+                else if (resumenGlobal.Count == 0)
+                {
+                    <p class="rp-vacio">No hay fichas disponibles.</p>
+                }
+                else
+                {
+                    var gActivas    = resumenGlobal.Count(f => f.Estado == "Activa");
+                    var gFinaliz    = resumenGlobal.Count(f => f.Estado == "Finalizada");
+                    var gOtras      = resumenGlobal.Count - gActivas - gFinaliz;
+                    var gTotal      = resumenGlobal.Count;
+                    var gAprendices = resumenGlobal.Sum(f => f.TotalAprendices);
+                    var gAsist      = resumenGlobal.Average(f => f.PorcentajeAsistencia);
+                    var gProg       = resumenGlobal.Average(f => f.ProgresoGeneral);
+                    var gVistas     = resumenGlobal.Sum(f => f.CompetenciasVista);
+                    var gPend       = resumenGlobal.Sum(f => f.CompetenciasPendientes);
+
+                    <div class="rp-kpi-row">
+                        <div class="rp-kpi-card rp-kpi-blue">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-collection"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@gTotal</span>
+                                <span class="rp-kpi-card-lbl">Fichas</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-indigo">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-people"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@gAprendices</span>
+                                <span class="rp-kpi-card-lbl">Aprendices</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-green">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-check2-circle"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@($"{gAsist:F0}")%</span>
+                                <span class="rp-kpi-card-lbl">Asistencia prom.</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-amber">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-graph-up-arrow"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@($"{gProg:F0}")%</span>
+                                <span class="rp-kpi-card-lbl">Progreso prom.</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-teal">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-award"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@gVistas</span>
+                                <span class="rp-kpi-card-lbl">Comp. finalizadas</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-slate">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-hourglass-split"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@gPend</span>
+                                <span class="rp-kpi-card-lbl">Comp. pendientes</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="rp-sep" />
+
+                    <div class="rp-charts-row">
+                        @* Distribucion de fichas *@
+                        <div class="rp-chart-card">
+                            <p class="rp-chart-titulo">Estado de Fichas</p>
+                            <div class="rp-stacked-bar">
+                                @if (gActivas > 0)
+                                {
+                                    <div class="rp-stack-seg rp-stack-green"
+                                         style="width:@($"{gActivas * 100.0 / gTotal:F1}")%"
+                                         title="Activas: @gActivas"></div>
+                                }
+                                @if (gFinaliz > 0)
+                                {
+                                    <div class="rp-stack-seg rp-stack-indigo"
+                                         style="width:@($"{gFinaliz * 100.0 / gTotal:F1}")%"
+                                         title="Finalizadas: @gFinaliz"></div>
+                                }
+                                @if (gOtras > 0)
+                                {
+                                    <div class="rp-stack-seg rp-stack-slate"
+                                         style="width:@($"{gOtras * 100.0 / gTotal:F1}")%"
+                                         title="Otras: @gOtras"></div>
+                                }
+                            </div>
+                            <div class="rp-leyenda">
+                                <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-green"></span>Activas (@gActivas)</span>
+                                <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-indigo"></span>Finalizadas (@gFinaliz)</span>
+                                @if (gOtras > 0)
+                                {
+                                    <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-slate"></span>Otras (@gOtras)</span>
+                                }
+                            </div>
+                        </div>
+
+                        @* Barras: Progreso por ficha *@
+                        <div class="rp-chart-card rp-chart-wide">
+                            <p class="rp-chart-titulo">Progreso por Ficha</p>
+                            <div class="rp-hbars">
+                                @foreach (var f in resumenGlobal.OrderByDescending(x => x.ProgresoGeneral))
+                                {
+                                    <div class="rp-hbar-row">
+                                        <span class="rp-hbar-label">@f.NumeroFicha</span>
+                                        <div class="rp-hbar-track">
+                                            <div class="rp-hbar-fill @HbarColor(f.ProgresoGeneral)"
+                                                 style="width:@f.ProgresoGeneral%"></div>
+                                        </div>
+                                        <span class="rp-hbar-pct">@f.ProgresoGeneral%</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="rp-sep" />
+
+                    <div class="rp-tabla-wrap">
+                        <table class="table table-hover table-sm rp-tabla">
+                            <thead>
+                                <tr>
+                                    <th>Ficha</th>
+                                    <th>Estado</th>
+                                    <th>Aprendices</th>
+                                    <th>Activos</th>
+                                    <th>En Riesgo</th>
+                                    <th>Asistencia</th>
+                                    <th>Progreso</th>
+                                    <th>Vista</th>
+                                    <th>En Curso</th>
+                                    <th>Pend.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var f in resumenGlobal)
+                                {
+                                    <tr>
+                                        <td><strong>@f.NumeroFicha</strong></td>
+                                        <td><span class="rp-badge @EstadoBadgeClass(f.Estado)">@f.Estado</span></td>
+                                        <td>@f.TotalAprendices</td>
+                                        <td>@f.AprendicesActivos</td>
+                                        <td class="@(f.AprendicesEnRiesgo > 0 ? "rp-celda-alerta" : "")">@f.AprendicesEnRiesgo</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="rp-barra"><div class="rp-barra-fill" style="width:@f.PorcentajeAsistencia%"></div></div>
+                                                <span class="rp-pct">@($"{f.PorcentajeAsistencia:F0}")%</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="rp-barra"><div class="rp-barra-fill" style="width:@f.ProgresoGeneral%"></div></div>
+                                                <span class="rp-pct">@f.ProgresoGeneral%</span>
+                                            </div>
+                                        </td>
+                                        <td class="rp-verde">@f.CompetenciasVista</td>
+                                        <td class="rp-amarillo">@f.CompetenciasEnCurso</td>
+                                        <td class="rp-gris">@f.CompetenciasPendientes</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+
+            @* ══════════════════════════════════════════════════════════
+               B — ASISTENCIA POR FICHA
+            ══════════════════════════════════════════════════════════ *@
+            @if (TipoActivo == "asistencia")
+            {
+                <div class="rp-toolbar">
+                    <select class="rp-select" @onchange="OnFichaChanged">
+                        <option value="">Seleccione una ficha...</option>
+                        @foreach (var f in fichas)
+                        {
+                            <option value="@f.NumeroFicha">Ficha @f.NumeroFicha</option>
+                        }
+                    </select>
+                    @if (!string.IsNullOrEmpty(FichaSeleccionada))
+                    {
+                        <a class="rp-btn-excel" role="button" style="cursor:pointer" @onclick="DescargarExcelAsistencia">
+                            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+                        </a>
+                    }
+                </div>
+
+                @if (cargando)
+                {
+                    <div class="rp-cargando-bloque">
+                        <div class="spinner-border rp-spinner" role="status"><span class="visually-hidden">Cargando...</span></div>
+                    </div>
+                }
+                else if (string.IsNullOrEmpty(FichaSeleccionada))
+                {
+                    <p class="rp-instruccion"><i class="bi bi-arrow-up-circle me-2"></i>Seleccione una ficha para ver el reporte de asistencia.</p>
+                }
+                else if (reporteAsistencia is null)
+                {
+                    <p class="rp-vacio">Sin datos o sin acceso a esta ficha.</p>
+                }
+                else
+                {
+                    var aTotal    = reporteAsistencia.Aprendices.Count;
+                    var aRiesgo   = reporteAsistencia.Aprendices.Count(a => a.EnRiesgo);
+                    var aPerfecta = reporteAsistencia.Aprendices.Count(a => a.Ausentes == 0);
+                    var aProm     = aTotal == 0 ? 0.0 : reporteAsistencia.Aprendices.Average(a => a.PorcentajeAsistencia);
+                    var aAusProm  = reporteAsistencia.Aprendices.Sum(a => a.Ausentes);
+                    var aJustif   = reporteAsistencia.Aprendices.Sum(a => a.Justificados);
+
+                    <div class="rp-kpi-row">
+                        <div class="rp-kpi-card rp-kpi-blue">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-percent"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@($"{aProm:F0}")%</span>
+                                <span class="rp-kpi-card-lbl">Asistencia prom.</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-green">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-check-circle"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@aPerfecta</span>
+                                <span class="rp-kpi-card-lbl">Sin ausencias</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-red">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-exclamation-triangle"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@aRiesgo</span>
+                                <span class="rp-kpi-card-lbl">En riesgo</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-amber">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-x-circle"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@aAusProm</span>
+                                <span class="rp-kpi-card-lbl">Total ausencias</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-slate">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-journal-check"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@aJustif</span>
+                                <span class="rp-kpi-card-lbl">Justificaciones</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="rp-sep" />
+
+                    <div class="rp-charts-row">
+                        @* Donut: Normal vs Riesgo *@
+                        <div class="rp-chart-card">
+                            <p class="rp-chart-titulo">Estado de Asistencia</p>
+                            @if (aTotal > 0)
+                            {
+                                var dNormal = (aTotal - aRiesgo) * 100.0 / aTotal;
+                                var dRiesgo = aRiesgo * 100.0 / aTotal;
+                                var C = 282.74;
+                                <div class="rp-donut-wrap">
+                                    <svg class="rp-donut" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="45" fill="none" stroke="#E2E8F0" stroke-width="14" />
+                                        @if (dNormal > 0)
+                                        {
+                                            <circle cx="60" cy="60" r="45" fill="none" stroke="#10B981" stroke-width="14"
+                                                    stroke-dasharray="@($"{dNormal / 100.0 * C:F2} {C:F2}")"
+                                                    stroke-dashoffset="@($"{C * 0.25:F2}")"
+                                                    transform="rotate(0 60 60)" />
+                                        }
+                                        @if (dRiesgo > 0)
+                                        {
+                                            <circle cx="60" cy="60" r="45" fill="none" stroke="#EF4444" stroke-width="14"
+                                                    stroke-dasharray="@($"{dRiesgo / 100.0 * C:F2} {C:F2}")"
+                                                    stroke-dashoffset="@($"{C * 0.25 - dNormal / 100.0 * C:F2}")"
+                                                    transform="rotate(0 60 60)" />
+                                        }
+                                        <text x="60" y="56" text-anchor="middle" font-size="17" font-weight="700" fill="#1E293B">@(aTotal - aRiesgo)</text>
+                                        <text x="60" y="70" text-anchor="middle" font-size="9" fill="#94A3B8">NORMALES</text>
+                                    </svg>
+                                </div>
+                                <div class="rp-leyenda">
+                                    <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-green"></span>Normal (@(aTotal - aRiesgo))</span>
+                                    <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-red"></span>En riesgo (@aRiesgo)</span>
+                                </div>
+                            }
+                        </div>
+
+                        @* Barras: Top ausentes *@
+                        <div class="rp-chart-card rp-chart-wide">
+                            <p class="rp-chart-titulo">Aprendices con mas Ausencias</p>
+                            @{
+                                var topAus = reporteAsistencia.Aprendices
+                                    .Where(a => a.Ausentes > 0)
+                                    .OrderByDescending(a => a.Ausentes)
+                                    .Take(8)
+                                    .ToList();
+                                var maxAus = topAus.Count > 0 ? topAus.Max(a => a.Ausentes) : 1;
+                                if (maxAus == 0) maxAus = 1;
+                            }
+                            @if (topAus.Count == 0)
+                            {
+                                <p class="rp-chart-vacio">Sin ausencias registradas</p>
+                            }
+                            else
+                            {
+                                <div class="rp-hbars">
+                                    @foreach (var a in topAus)
+                                    {
+                                        <div class="rp-hbar-row">
+                                            <span class="rp-hbar-label rp-hbar-nombre">@(a.NombreCompleto.Split(' ').FirstOrDefault() ?? a.NombreCompleto)</span>
+                                            <div class="rp-hbar-track">
+                                                <div class="rp-hbar-fill rp-hbar-red"
+                                                     style="width:@($"{a.Ausentes * 100.0 / maxAus:F1}")%"></div>
+                                            </div>
+                                            <span class="rp-hbar-pct">@a.Ausentes</span>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <hr class="rp-sep" />
+
+                    <div class="rp-tabla-wrap">
+                        <table class="table table-hover table-sm rp-tabla">
+                            <thead>
+                                <tr>
+                                    <th>Aprendiz</th>
+                                    <th>Documento</th>
+                                    <th>Sesiones</th>
+                                    <th>Presentes</th>
+                                    <th>Justif.</th>
+                                    <th>Ausentes</th>
+                                    <th>% Asistencia</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var a in reporteAsistencia.Aprendices.OrderBy(x => x.EnRiesgo ? 0 : 1))
+                                {
+                                    <tr class="@(a.EnRiesgo ? "rp-fila-riesgo" : "")">
+                                        <td>@a.NombreCompleto</td>
+                                        <td>@a.NumeroDocumento</td>
+                                        <td>@a.TotalSesiones</td>
+                                        <td class="rp-verde">@a.Presentes</td>
+                                        <td>@a.Justificados</td>
+                                        <td class="@(a.Ausentes >= 3 ? "rp-celda-alerta" : "")">@a.Ausentes</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="rp-barra">
+                                                    <div class="rp-barra-fill @(a.PorcentajeAsistencia < 80 ? "rp-barra-red" : "")"
+                                                         style="width:@a.PorcentajeAsistencia%"></div>
+                                                </div>
+                                                <span class="rp-pct">@($"{a.PorcentajeAsistencia:F0}")%</span>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @if (a.EnRiesgo)
+                                            {
+                                                <span class="rp-badge rp-badge-riesgo"><i class="bi bi-exclamation-triangle me-1"></i>Riesgo</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="rp-badge rp-badge-ok"><i class="bi bi-check-circle me-1"></i>Normal</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+
+            @* ══════════════════════════════════════════════════════════
+               C — PROGRESO DE COMPETENCIAS
+            ══════════════════════════════════════════════════════════ *@
+            @if (TipoActivo == "competencias-ficha")
+            {
+                <div class="rp-toolbar">
+                    <select class="rp-select" @onchange="OnFichaChanged">
+                        <option value="">Seleccione una ficha...</option>
+                        @foreach (var f in fichas)
+                        {
+                            <option value="@f.NumeroFicha">Ficha @f.NumeroFicha</option>
+                        }
+                    </select>
+                    @if (!string.IsNullOrEmpty(FichaSeleccionada))
+                    {
+                        <a class="rp-btn-excel" role="button" style="cursor:pointer" @onclick="DescargarExcelCompetencias">
+                            <i class="bi bi-file-earmark-excel me-1"></i>Excel
+                        </a>
+                    }
+                </div>
+
+                @if (cargando)
+                {
+                    <div class="rp-cargando-bloque">
+                        <div class="spinner-border rp-spinner" role="status"><span class="visually-hidden">Cargando...</span></div>
+                    </div>
+                }
+                else if (string.IsNullOrEmpty(FichaSeleccionada))
+                {
+                    <p class="rp-instruccion"><i class="bi bi-arrow-up-circle me-2"></i>Seleccione una ficha para ver el progreso de competencias.</p>
+                }
+                else if (reporteProgreso is not null)
+                {
+                    var comps     = reporteProgreso.Competencias;
+                    var cVistas   = comps.Count(c => c.Estado == "Vista");
+                    var cEnCurso  = comps.Count(c => c.Estado is "En Curso" or "Programada");
+                    var cPend     = comps.Count(c => c.Estado == "Pendiente");
+                    var cTotal    = comps.Count;
+                    var hPlaneadas  = comps.Sum(c => c.HorasPlaneadas);
+                    var hEjecutadas = comps.Sum(c => c.HorasEjecutadas);
+
+                    <div class="rp-kpi-row">
+                        <div class="rp-kpi-card rp-kpi-green">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-check-all"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@cVistas</span>
+                                <span class="rp-kpi-card-lbl">Completadas</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-amber">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-play-circle"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@cEnCurso</span>
+                                <span class="rp-kpi-card-lbl">En ejecucion</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-slate">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-hourglass"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@cPend</span>
+                                <span class="rp-kpi-card-lbl">Pendientes</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-blue">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-clock-history"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@hEjecutadas h</span>
+                                <span class="rp-kpi-card-lbl">Horas ejecutadas</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-indigo">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-calendar3"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@hPlaneadas h</span>
+                                <span class="rp-kpi-card-lbl">Horas planeadas</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="rp-sep" />
+
+                    <div class="rp-charts-row">
+                        @* Donut: distribucion estados *@
+                        <div class="rp-chart-card">
+                            <p class="rp-chart-titulo">Distribucion</p>
+                            @if (cTotal > 0)
+                            {
+                                var pV = cVistas   * 100.0 / cTotal;
+                                var pC = cEnCurso  * 100.0 / cTotal;
+                                var pP = cPend     * 100.0 / cTotal;
+                                var CC = 282.74;
+                                var o1 = CC * 0.25;
+                                var o2 = CC * 0.25 - pV / 100.0 * CC;
+                                var o3 = CC * 0.25 - (pV + pC) / 100.0 * CC;
+                                <div class="rp-donut-wrap">
+                                    <svg class="rp-donut" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="45" fill="none" stroke="#E2E8F0" stroke-width="14" />
+                                        @if (pV > 0)
+                                        {
+                                            <circle cx="60" cy="60" r="45" fill="none" stroke="#10B981" stroke-width="14"
+                                                    stroke-dasharray="@($"{pV / 100.0 * CC:F2} {CC:F2}")"
+                                                    stroke-dashoffset="@($"{o1:F2}")" />
+                                        }
+                                        @if (pC > 0)
+                                        {
+                                            <circle cx="60" cy="60" r="45" fill="none" stroke="#F59E0B" stroke-width="14"
+                                                    stroke-dasharray="@($"{pC / 100.0 * CC:F2} {CC:F2}")"
+                                                    stroke-dashoffset="@($"{o2:F2}")" />
+                                        }
+                                        @if (pP > 0)
+                                        {
+                                            <circle cx="60" cy="60" r="45" fill="none" stroke="#94A3B8" stroke-width="14"
+                                                    stroke-dasharray="@($"{pP / 100.0 * CC:F2} {CC:F2}")"
+                                                    stroke-dashoffset="@($"{o3:F2}")" />
+                                        }
+                                        <text x="60" y="56" text-anchor="middle" font-size="18" font-weight="700" fill="#1E293B">@cTotal</text>
+                                        <text x="60" y="70" text-anchor="middle" font-size="9" fill="#94A3B8">TOTAL</text>
+                                    </svg>
+                                </div>
+                                <div class="rp-leyenda">
+                                    <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-green"></span>Completadas (@cVistas)</span>
+                                    <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-amber"></span>En ejecucion (@cEnCurso)</span>
+                                    <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-slate"></span>Pendientes (@cPend)</span>
+                                </div>
+                            }
+                        </div>
+
+                        @* Barras: progreso por competencia *@
+                        <div class="rp-chart-card rp-chart-wide">
+                            <p class="rp-chart-titulo">Progreso por Competencia</p>
+                            <div class="rp-hbars">
+                                @foreach (var c in comps.OrderByDescending(x => x.PorcentajeProgreso))
+                                {
+                                    <div class="rp-hbar-row">
+                                        <span class="rp-hbar-label rp-hbar-codigo">@c.CodigoCompetencia</span>
+                                        <div class="rp-hbar-track">
+                                            <div class="rp-hbar-fill @HbarColor(c.PorcentajeProgreso)"
+                                                 style="width:@c.PorcentajeProgreso%"></div>
+                                        </div>
+                                        <span class="rp-hbar-pct">@c.PorcentajeProgreso%</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="rp-sep" />
+
+                    <div class="rp-tabla-wrap">
+                        <table class="table table-hover table-sm rp-tabla">
+                            <thead>
+                                <tr>
+                                    <th>Codigo</th>
+                                    <th>Competencia</th>
+                                    <th>Estado</th>
+                                    <th>Instructor</th>
+                                    <th>H. Planeadas</th>
+                                    <th>H. Ejecutadas</th>
+                                    <th>Progreso</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var c in comps)
+                                {
+                                    <tr>
+                                        <td><small class="rp-codigo">@c.CodigoCompetencia</small></td>
+                                        <td>@c.NombreCompetencia</td>
+                                        <td><span class="rp-badge @CompetenciaBadgeClass(c.Estado)">@c.Estado</span></td>
+                                        <td>@(c.NombreInstructor ?? "—")</td>
+                                        <td>@c.HorasPlaneadas h</td>
+                                        <td>@c.HorasEjecutadas h</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="rp-barra"><div class="rp-barra-fill" style="width:@c.PorcentajeProgreso%"></div></div>
+                                                <span class="rp-pct">@c.PorcentajeProgreso%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="rp-vacio">Sin datos de competencias para esta ficha.</p>
+                }
+            }
+
+            @* ══════════════════════════════════════════════════════════
+               D — JUICIOS EVALUATIVOS
+            ══════════════════════════════════════════════════════════ *@
+            @if (TipoActivo == "juicios")
+            {
+                <div class="rp-toolbar">
+                    <select class="rp-select" @onchange="OnFichaChanged">
+                        <option value="">Seleccione una ficha...</option>
+                        @foreach (var f in fichas)
+                        {
+                            <option value="@f.NumeroFicha">Ficha @f.NumeroFicha</option>
+                        }
+                    </select>
+                </div>
+
+                @if (cargando)
+                {
+                    <div class="rp-cargando-bloque">
+                        <div class="spinner-border rp-spinner" role="status"><span class="visually-hidden">Cargando...</span></div>
+                    </div>
+                }
+                else if (string.IsNullOrEmpty(FichaSeleccionada))
+                {
+                    <p class="rp-instruccion"><i class="bi bi-arrow-up-circle me-2"></i>Seleccione una ficha para ver los juicios evaluativos.</p>
+                }
+                else if (reporteJuicios is not null && reporteJuicios.Filas.Count > 0)
+                {
+                    var jFilas    = reporteJuicios.Filas;
+                    var jTotal    = jFilas.Count;
+                    var jAprobados = jFilas.Count(f => f.Juicio == "Aprobado");
+                    var jPendientes = jFilas.Count(f => f.Juicio != "Aprobado");
+                    var jPct      = jTotal == 0 ? 0 : (int)(jAprobados * 100.0 / jTotal);
+                    var jAprendices = JuiciosPorAprendiz.Count();
+
+                    <div class="rp-kpi-row">
+                        <div class="rp-kpi-card rp-kpi-blue">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-people"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@jAprendices</span>
+                                <span class="rp-kpi-card-lbl">Aprendices</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-indigo">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-list-check"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@jTotal</span>
+                                <span class="rp-kpi-card-lbl">Total resultados</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-green">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-patch-check"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@jAprobados</span>
+                                <span class="rp-kpi-card-lbl">Aprobados</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-amber">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-clock"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@jPendientes</span>
+                                <span class="rp-kpi-card-lbl">Por evaluar</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-teal">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-graph-up"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@jPct%</span>
+                                <span class="rp-kpi-card-lbl">Avance evaluativo</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="rp-sep" />
+
+                    @* Acordeon jerarquico: Aprendiz > Competencia > Resultados *@
+                    @foreach (var grupo in JuiciosPorAprendiz)
+                    {
+                        <details class="rp-detalle">
+                            <summary>
+                                <div class="rp-juicio-sumario">
+                                    <div class="rp-juicio-info">
+                                        <span class="rp-juicio-nombre">@grupo.NombreCompleto</span>
+                                        <span class="rp-juicio-doc">@grupo.NumeroDocumento</span>
+                                    </div>
+                                    <div class="rp-juicio-stats">
+                                        <span class="rp-badge rp-badge-aprobado">@grupo.Aprobados aprobados</span>
+                                        <span class="rp-badge rp-badge-por-evaluar">@grupo.PorEvaluar pendientes</span>
+                                    </div>
+                                    <div class="rp-juicio-barra">
+                                        <div class="rp-barra rp-barra-md">
+                                            <div class="rp-barra-fill rp-barra-green" style="width:@grupo.PorcentajeAvance%"></div>
+                                        </div>
+                                        <span class="rp-pct">@grupo.PorcentajeAvance%</span>
+                                    </div>
+                                </div>
+                            </summary>
+
+                            @foreach (var cGrupo in grupo.PorCompetencia)
+                            {
+                                <details class="rp-detalle rp-detalle-inner">
+                                    <summary>
+                                        <span class="rp-codigo">@cGrupo.Key</span>
+                                        <span class="rp-detalle-comp-nombre ms-2">@cGrupo.First().NombreCompetencia</span>
+                                        <span class="rp-detalle-cnt ms-auto">@cGrupo.Count() resultado(s)</span>
+                                    </summary>
+                                    <div class="rp-tabla-wrap rp-tabla-inner">
+                                        <table class="table table-sm rp-tabla">
+                                            <thead>
+                                                <tr>
+                                                    <th>Resultado de Aprendizaje</th>
+                                                    <th>Juicio</th>
+                                                    <th>Fecha</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var fila in cGrupo)
+                                                {
+                                                    <tr>
+                                                        <td><small>@fila.NombreResultado</small></td>
+                                                        <td><span class="rp-badge @JuicioBadgeClass(fila.Juicio)">@(fila.Juicio ?? "Por Evaluar")</span></td>
+                                                        <td><small>@(fila.FechaJuicio?.ToString("dd/MM/yyyy") ?? "—")</small></td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </details>
+                            }
+                        </details>
+                    }
+                }
+                else
+                {
+                    <p class="rp-vacio">No hay juicios registrados para esta ficha.</p>
+                }
+            }
+
+            @* ══════════════════════════════════════════════════════════
+               F — POR INSTRUCTOR
+            ══════════════════════════════════════════════════════════ *@
+            @if (TipoActivo == "instructor")
+            {
+                @if (SesionService.EsAdministrador)
+                {
+                    <div class="rp-toolbar">
+                        <select class="rp-select" @onchange="OnInstructorChanged">
+                            <option value="0">Seleccione un instructor...</option>
+                            @foreach (var i in instructores)
+                            {
+                                <option value="@i.IdInstructor">@i.NombreCompleto</option>
+                            }
+                        </select>
+                    </div>
+                }
+
+                @if (cargando)
+                {
+                    <div class="rp-cargando-bloque">
+                        <div class="spinner-border rp-spinner" role="status"><span class="visually-hidden">Cargando...</span></div>
+                    </div>
+                }
+                else if (reporteInstructor is not null)
+                {
+                    var pctCumpl = reporteInstructor.TotalHorasPlaneadas == 0
+                        ? 0
+                        : (int)Math.Min(reporteInstructor.TotalHorasEjecutadas * 100.0 / reporteInstructor.TotalHorasPlaneadas, 100);
+                    var ringColor = pctCumpl >= 80 ? "#10B981" : pctCumpl >= 50 ? "#F59E0B" : "#EF4444";
+                    var RC = 188.5; @* 2*pi*30 *@
+
+                    <div class="rp-instructor-header">
+                        <div class="rp-instructor-avatar">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <div class="rp-instructor-meta">
+                            <h5 class="rp-instructor-nombre">@reporteInstructor.NombreCompleto</h5>
+                            <p class="rp-instructor-correo"><i class="bi bi-envelope me-1"></i>@reporteInstructor.Correo</p>
+                        </div>
+                        <div class="rp-instructor-ring ms-auto">
+                            <svg viewBox="0 0 80 80" class="rp-ring-svg">
+                                <circle cx="40" cy="40" r="30" fill="none" stroke="#E2E8F0" stroke-width="8" />
+                                <circle cx="40" cy="40" r="30" fill="none"
+                                        stroke="@ringColor"
+                                        stroke-width="8"
+                                        stroke-dasharray="@($"{pctCumpl / 100.0 * RC:F2} {RC:F2}")"
+                                        stroke-dashoffset="@($"{RC * 0.25:F2}")"
+                                        stroke-linecap="round" />
+                                <text x="40" y="37" text-anchor="middle" font-size="12" font-weight="700" fill="#1E293B">@pctCumpl%</text>
+                                <text x="40" y="50" text-anchor="middle" font-size="7" fill="#94A3B8">CUMPLIM.</text>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="rp-kpi-row">
+                        <div class="rp-kpi-card rp-kpi-blue">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-collection"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@reporteInstructor.TotalFichas</span>
+                                <span class="rp-kpi-card-lbl">Fichas</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-indigo">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-book"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@reporteInstructor.TotalCompetencias</span>
+                                <span class="rp-kpi-card-lbl">Competencias</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-green">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-clock-history"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@reporteInstructor.TotalHorasEjecutadas h</span>
+                                <span class="rp-kpi-card-lbl">Horas ejecutadas</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-slate">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-calendar3"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@reporteInstructor.TotalHorasPlaneadas h</span>
+                                <span class="rp-kpi-card-lbl">Horas planeadas</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (reporteInstructor.Fichas.Count > 0)
+                    {
+                        var maxHPlan = reporteInstructor.Fichas
+                            .Select(f2 => f2.Competencias.Sum(c => c.HorasPlaneadas))
+                            .DefaultIfEmpty(1)
+                            .Max();
+                        if (maxHPlan == 0) maxHPlan = 1;
+                        <hr class="rp-sep" />
+                        <p class="rp-chart-titulo">Horas Ejecutadas vs Planeadas por Ficha</p>
+                        <div class="rp-hbars mb-2">
+                            @foreach (var ficha in reporteInstructor.Fichas)
+                            {
+                                var hEj = ficha.Competencias.Sum(c => c.HorasEjecutadas);
+                                var hPl = ficha.Competencias.Sum(c => c.HorasPlaneadas);
+                                <div class="rp-hbar-row">
+                                    <span class="rp-hbar-label">@ficha.NumeroFicha</span>
+                                    <div class="rp-hbar-track rp-hbar-double">
+                                        <div class="rp-hbar-layer rp-hbar-slate" style="width:@($"{hPl * 100.0 / maxHPlan:F1}")%"></div>
+                                        <div class="rp-hbar-layer rp-hbar-blue" style="width:@($"{hEj * 100.0 / maxHPlan:F1}")%"></div>
+                                    </div>
+                                    <span class="rp-hbar-pct">@hEj / @hPl h</span>
+                                </div>
+                            }
+                        </div>
+                        <div class="rp-leyenda mb-3">
+                            <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-blue"></span>Ejecutadas</span>
+                            <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-slate"></span>Planeadas</span>
+                        </div>
+                    }
+
+                    <hr class="rp-sep" />
+
+                    @foreach (var ficha in reporteInstructor.Fichas)
+                    {
+                        <details class="rp-detalle">
+                            <summary>
+                                Ficha @ficha.NumeroFicha
+                                <span class="rp-detalle-cnt">@ficha.Competencias.Count competencia(s)</span>
+                            </summary>
+                            <div class="rp-tabla-wrap rp-tabla-inner">
+                                <table class="table table-sm rp-tabla">
+                                    <thead>
+                                        <tr>
+                                            <th>Codigo</th>
+                                            <th>Competencia</th>
+                                            <th>Estado</th>
+                                            <th>H. Planeadas</th>
+                                            <th>H. Ejecutadas</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var c in ficha.Competencias)
+                                        {
+                                            <tr>
+                                                <td><small class="rp-codigo">@c.CodigoCompetencia</small></td>
+                                                <td>@c.NombreCompetencia</td>
+                                                <td><span class="rp-badge @CompetenciaBadgeClass(c.Estado)">@c.Estado</span></td>
+                                                <td>@c.HorasPlaneadas h</td>
+                                                <td>@c.HorasEjecutadas h</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    }
+                }
+                else if (!cargando)
+                {
+                    <p class="rp-instruccion">
+                        <i class="bi bi-arrow-up-circle me-2"></i>
+                        @(SesionService.EsAdministrador
+                            ? "Seleccione un instructor para ver su reporte de carga academica."
+                            : "Cargando informacion del instructor...")
+                    </p>
+                }
+            }
+
+            @* ══════════════════════════════════════════════════════════
+               G — POR COMPETENCIA
+            ══════════════════════════════════════════════════════════ *@
+            @if (TipoActivo == "competencia")
+            {
+                <div class="rp-toolbar">
+                    <select class="rp-select" @onchange="OnCompetenciaChanged">
+                        <option value="0">Seleccione una competencia...</option>
+                        @foreach (var c in competencias)
+                        {
+                            <option value="@c.IdCompetencia">@c.NombreCompetencia</option>
+                        }
+                    </select>
+                </div>
+
+                @if (cargando)
+                {
+                    <div class="rp-cargando-bloque">
+                        <div class="spinner-border rp-spinner" role="status"><span class="visually-hidden">Cargando...</span></div>
+                    </div>
+                }
+                else if (reporteCompetencia is not null)
+                {
+                    var rcAprobados  = reporteCompetencia.Fichas.Sum(f => f.AprendicesAprobados);
+                    var rcAprendices = reporteCompetencia.Fichas.Sum(f => f.TotalAprendices);
+                    var rcPendientes = rcAprendices - rcAprobados;
+                    var rcHEj        = reporteCompetencia.Fichas.Sum(f => f.HorasEjecutadas);
+                    var rcPct        = rcAprendices == 0 ? 0 : rcAprobados * 100.0 / rcAprendices;
+                    var rcCC         = 282.74;
+
+                    <div class="rp-competencia-header">
+                        <span class="rp-codigo rp-codigo-lg">@reporteCompetencia.Codigo</span>
+                        <div>
+                            <h5 class="rp-competencia-nombre">@reporteCompetencia.Nombre</h5>
+                            <p class="rp-competencia-horas"><i class="bi bi-clock me-1"></i>@reporteCompetencia.HorasAsignadas horas asignadas</p>
+                        </div>
+                    </div>
+
+                    <div class="rp-kpi-row">
+                        <div class="rp-kpi-card rp-kpi-blue">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-collection"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@reporteCompetencia.TotalFichas</span>
+                                <span class="rp-kpi-card-lbl">Fichas asociadas</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-green">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-patch-check"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@rcAprobados</span>
+                                <span class="rp-kpi-card-lbl">Aprendices aprobados</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-amber">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-hourglass-split"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@rcPendientes</span>
+                                <span class="rp-kpi-card-lbl">Pendientes</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-indigo">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-clock-history"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@rcHEj h</span>
+                                <span class="rp-kpi-card-lbl">Horas ejecutadas</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="rp-sep" />
+
+                    <div class="rp-charts-row">
+                        <div class="rp-chart-card">
+                            <p class="rp-chart-titulo">Estado General</p>
+                            @if (rcAprendices > 0)
+                            {
+                                <div class="rp-donut-wrap">
+                                    <svg class="rp-donut" viewBox="0 0 120 120">
+                                        <circle cx="60" cy="60" r="45" fill="none" stroke="#E2E8F0" stroke-width="14" />
+                                        @if (rcPct > 0)
+                                        {
+                                            <circle cx="60" cy="60" r="45" fill="none" stroke="#10B981" stroke-width="14"
+                                                    stroke-dasharray="@($"{rcPct / 100.0 * rcCC:F2} {rcCC:F2}")"
+                                                    stroke-dashoffset="@($"{rcCC * 0.25:F2}")" />
+                                        }
+                                        @if (rcPct < 100)
+                                        {
+                                            <circle cx="60" cy="60" r="45" fill="none" stroke="#F59E0B" stroke-width="14"
+                                                    stroke-dasharray="@($"{(100 - rcPct) / 100.0 * rcCC:F2} {rcCC:F2}")"
+                                                    stroke-dashoffset="@($"{rcCC * 0.25 - rcPct / 100.0 * rcCC:F2}")" />
+                                        }
+                                        <text x="60" y="56" text-anchor="middle" font-size="15" font-weight="700" fill="#1E293B">@($"{rcPct:F0}")%</text>
+                                        <text x="60" y="70" text-anchor="middle" font-size="9" fill="#94A3B8">APROBADOS</text>
+                                    </svg>
+                                </div>
+                                <div class="rp-leyenda">
+                                    <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-green"></span>Aprobados (@rcAprobados)</span>
+                                    <span class="rp-ley-item"><span class="rp-ley-dot rp-dot-amber"></span>Pendientes (@rcPendientes)</span>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="rp-chart-card rp-chart-wide">
+                            <p class="rp-chart-titulo">Avance por Ficha</p>
+                            <div class="rp-hbars">
+                                @foreach (var f in reporteCompetencia.Fichas)
+                                {
+                                    var pctF = f.TotalAprendices == 0 ? 0 : (int)(f.AprendicesAprobados * 100.0 / f.TotalAprendices);
+                                    <div class="rp-hbar-row">
+                                        <span class="rp-hbar-label">@f.NumeroFicha</span>
+                                        <div class="rp-hbar-track">
+                                            <div class="rp-hbar-fill @HbarColor(pctF)" style="width:@pctF%"></div>
+                                        </div>
+                                        <span class="rp-hbar-pct">@f.AprendicesAprobados / @f.TotalAprendices</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="rp-sep" />
+
+                    <div class="rp-tabla-wrap">
+                        <table class="table table-hover table-sm rp-tabla">
+                            <thead>
+                                <tr>
+                                    <th>Ficha</th>
+                                    <th>Estado</th>
+                                    <th>Instructor</th>
+                                    <th>H. Planeadas</th>
+                                    <th>H. Ejecutadas</th>
+                                    <th>Aprobados / Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var f in reporteCompetencia.Fichas)
+                                {
+                                    <tr>
+                                        <td><strong>@f.NumeroFicha</strong></td>
+                                        <td><span class="rp-badge @CompetenciaBadgeClass(f.Estado)">@f.Estado</span></td>
+                                        <td>@(f.NombreInstructor ?? "—")</td>
+                                        <td>@f.HorasPlaneadas h</td>
+                                        <td>@f.HorasEjecutadas h</td>
+                                        <td>@f.AprendicesAprobados / @f.TotalAprendices</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="rp-instruccion"><i class="bi bi-arrow-up-circle me-2"></i>Seleccione una competencia para ver el reporte.</p>
+                }
+            }
+
+            @* ══════════════════════════════════════════════════════════
+               H — PATROCINIO
+            ══════════════════════════════════════════════════════════ *@
+            @if (TipoActivo == "patrocinio")
+            {
+                @if (cargando)
+                {
+                    <div class="rp-cargando-bloque">
+                        <div class="spinner-border rp-spinner" role="status"><span class="visually-hidden">Cargando...</span></div>
+                    </div>
+                }
+                else if (reportePatrocinio.Count == 0)
+                {
+                    <p class="rp-vacio">No hay aprendices patrocinados en las fichas accesibles.</p>
+                }
+                else
+                {
+                    var pTotal   = reportePatrocinio.Count;
+                    var pLectiva = reportePatrocinio.Count(p => p.Etapa == "Lectiva");
+                    var pProd    = reportePatrocinio.Count(p => p.Etapa == "Productiva");
+                    var pAsist   = reportePatrocinio.Average(p => p.PorcentajeAsistencia);
+
+                    <div class="rp-kpi-row">
+                        <div class="rp-kpi-card rp-kpi-blue">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-building"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@pTotal</span>
+                                <span class="rp-kpi-card-lbl">Total patrocinados</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-indigo">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-book-half"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@pLectiva</span>
+                                <span class="rp-kpi-card-lbl">Etapa Lectiva</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-teal">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-briefcase"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@pProd</span>
+                                <span class="rp-kpi-card-lbl">Etapa Productiva</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-green">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-check2-circle"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@($"{pAsist:F0}")%</span>
+                                <span class="rp-kpi-card-lbl">Asistencia prom.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="rp-sep" />
+
+                    <div class="rp-tabla-wrap">
+                        <table class="table table-hover table-sm rp-tabla">
+                            <thead>
+                                <tr>
+                                    <th>Aprendiz</th>
+                                    <th>Documento</th>
+                                    <th>Ficha</th>
+                                    <th>Empresa</th>
+                                    <th>Contacto</th>
+                                    <th>Etapa</th>
+                                    <th>Inicio</th>
+                                    <th>Fin</th>
+                                    <th>% Asistencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in reportePatrocinio)
+                                {
+                                    <tr>
+                                        <td>@p.NombreCompleto</td>
+                                        <td>@p.NumeroDocumento</td>
+                                        <td>@p.NumeroFicha</td>
+                                        <td>@p.NombreEmpresa</td>
+                                        <td>@(p.ContactoEmpresa ?? "—")</td>
+                                        <td>
+                                            <span class="rp-badge @(p.Etapa == "Productiva" ? "rp-badge-productiva" : "rp-badge-lectiva")">
+                                                @p.Etapa
+                                            </span>
+                                        </td>
+                                        <td>@(p.FechaInicioEtapa?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                        <td>@(p.FechaFinEtapa?.ToString("dd/MM/yyyy") ?? "—")</td>
+                                        <td>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="rp-barra">
+                                                    <div class="rp-barra-fill @(p.PorcentajeAsistencia < 80 ? "rp-barra-red" : "")"
+                                                         style="width:@p.PorcentajeAsistencia%"></div>
+                                                </div>
+                                                <span class="rp-pct">@($"{p.PorcentajeAsistencia:F0}")%</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+
+            @* ══════════════════════════════════════════════════════════
+               A — INFORME INDIVIDUAL
+            ══════════════════════════════════════════════════════════ *@
+            @if (TipoActivo == "informe-individual")
+            {
+                <div class="rp-toolbar rp-toolbar-wrap">
+                    <select class="rp-select" @onchange="OnFichaInformeChanged">
+                        <option value="">Seleccione una ficha...</option>
+                        @foreach (var f in fichas)
+                        {
+                            <option value="@f.NumeroFicha">Ficha @f.NumeroFicha</option>
+                        }
+                    </select>
+
+                    @if (aprendicesInforme.Count > 0)
+                    {
+                        <select class="rp-select" value="@aprendizInformeId"
+                                @onchange="OnAprendizInformeChanged">
+                            <option value="0">Seleccione un aprendiz...</option>
+                            @foreach (var a in aprendicesInforme)
+                            {
+                                <option value="@a.IdAprendiz">@a.Nombres</option>
+                            }
+                        </select>
+                    }
+
+                    @if (aprendizInformeId > 0)
+                    {
+                        <a class="rp-btn-primary"
+                           href="/aprendices/@aprendizInformeId/informe"
+                           target="_blank">
+                            <i class="bi bi-file-earmark-pdf me-1"></i>Ver PDF
+                        </a>
+                    }
+                </div>
+
+                @if (cargandoAprendicesInforme || cargandoInforme)
+                {
+                    <div class="rp-cargando-bloque">
+                        <div class="spinner-border rp-spinner" role="status"><span class="visually-hidden">Cargando...</span></div>
+                    </div>
+                }
+                else if (informeAprendiz is not null)
+                {
+                    @* ── Header del aprendiz ── *@
+                    <div class="rp-inf-header">
+                        <div class="rp-inf-avatar"><i class="bi bi-person-circle"></i></div>
+                        <div class="rp-inf-meta">
+                            <h5 class="rp-inf-nombre">@informeAprendiz.Nombres @informeAprendiz.Apellidos</h5>
+                            <p class="rp-inf-doc"><i class="bi bi-card-text me-1"></i>@informeAprendiz.TipoDocumento — @informeAprendiz.NumeroDocumento</p>
+                            <p class="rp-inf-ficha"><i class="bi bi-collection me-1"></i>Ficha: <strong>@(informeAprendiz.Ficha.FirstOrDefault() ?? "—")</strong></p>
+                        </div>
+                        <div class="rp-inf-badges">
+                            <span class="rp-badge @EstadoAprendizBadge(informeAprendiz.Estado)">@informeAprendiz.Estado</span>
+                            @if (informeAprendizFicha?.TienePatrocinio == true)
+                            {
+                                <span class="rp-badge rp-badge-lectiva"><i class="bi bi-building me-1"></i>Patrocinado</span>
+                            }
+                            @if (informeAprendizFicha?.AlDia == true)
+                            {
+                                <span class="rp-badge rp-badge-ok"><i class="bi bi-check-circle me-1"></i>Al dia</span>
+                            }
+                        </div>
+                    </div>
+
+                    @* ── Barra de progreso ── *@
+                    <div class="rp-inf-progreso">
+                        <span class="rp-inf-prog-lbl">Progreso academico de la ficha</span>
+                        <div class="rp-inf-prog-track">
+                            <div class="rp-inf-prog-fill" style="width:@(informeFichaDetalle?.ProgresoGeneral ?? 0)%"></div>
+                        </div>
+                        <span class="rp-inf-prog-pct">@(informeFichaDetalle?.ProgresoGeneral ?? 0)%</span>
+                    </div>
+
+                    @* ── KPIs de seguimiento ── *@
+                    <div class="rp-kpi-row">
+                        <div class="rp-kpi-card rp-kpi-indigo">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-journal-check"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@InformeCompProgramadas</span>
+                                <span class="rp-kpi-card-lbl">Programadas</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-blue">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-play-circle"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@InformeCompEnCurso</span>
+                                <span class="rp-kpi-card-lbl">En Curso</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-red">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-exclamation-circle"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@InformeCompSinCalif</span>
+                                <span class="rp-kpi-card-lbl">Sin Calificar</span>
+                            </div>
+                        </div>
+                        <div class="rp-kpi-card rp-kpi-teal">
+                            <div class="rp-kpi-card-icon"><i class="bi bi-file-earmark-text"></i></div>
+                            <div class="rp-kpi-card-body">
+                                <span class="rp-kpi-card-val">@(informeAprendizFicha?.TienePatrocinio == true ? "Si" : "No")</span>
+                                <span class="rp-kpi-card-lbl">Contrato Acad.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="rp-sep" />
+
+                    @* ── Tabs internos ── *@
+                    <div class="rp-inf-tabs">
+                        <button class="rp-inf-tab @(tabInforme == "personal" ? "rp-inf-tab-activo" : "")"
+                                @onclick='() => tabInforme = "personal"'>
+                            <i class="bi bi-person me-1"></i>Datos Personales
+                        </button>
+                        <button class="rp-inf-tab @(tabInforme == "acudiente" ? "rp-inf-tab-activo" : "")"
+                                @onclick='() => tabInforme = "acudiente"'>
+                            <i class="bi bi-people me-1"></i>Acudiente
+                        </button>
+                        <button class="rp-inf-tab @(tabInforme == "competencias" ? "rp-inf-tab-activo" : "")"
+                                @onclick='() => tabInforme = "competencias"'>
+                            <i class="bi bi-book me-1"></i>Competencias
+                        </button>
+                        <button class="rp-inf-tab @(tabInforme == "observaciones" ? "rp-inf-tab-activo" : "")"
+                                @onclick='() => tabInforme = "observaciones"'>
+                            <i class="bi bi-chat-left-text me-1"></i>Observaciones
+                        </button>
+                    </div>
+
+                    @* ── Tab: Datos Personales ── *@
+                    @if (tabInforme == "personal")
+                    {
+                        <div class="rp-inf-datos-grid">
+                            <div class="rp-inf-dato">
+                                <span class="rp-inf-dato-lbl">Tipo de Documento</span>
+                                <span class="rp-inf-dato-val">@(informeAprendiz.TipoDocumento)</span>
+                            </div>
+                            <div class="rp-inf-dato">
+                                <span class="rp-inf-dato-lbl">Numero de Documento</span>
+                                <span class="rp-inf-dato-val">@informeAprendiz.NumeroDocumento</span>
+                            </div>
+                            <div class="rp-inf-dato">
+                                <span class="rp-inf-dato-lbl">Fecha de Nacimiento</span>
+                                <span class="rp-inf-dato-val">@(informeAprendiz.FechaNacimiento?.ToString("dd/MM/yyyy") ?? "—")</span>
+                            </div>
+                            <div class="rp-inf-dato">
+                                <span class="rp-inf-dato-lbl">Telefono de Contacto</span>
+                                <span class="rp-inf-dato-val">@(informeAprendiz.Telefono ?? "—")</span>
+                            </div>
+                            <div class="rp-inf-dato">
+                                <span class="rp-inf-dato-lbl">Municipio</span>
+                                <span class="rp-inf-dato-val">@(informeAprendiz.Municipio ?? "—")</span>
+                            </div>
+                            <div class="rp-inf-dato">
+                                <span class="rp-inf-dato-lbl">Direccion de Residencia</span>
+                                <span class="rp-inf-dato-val">@(informeAprendiz.Direccion ?? "—")</span>
+                            </div>
+                            <div class="rp-inf-dato">
+                                <span class="rp-inf-dato-lbl">Estado</span>
+                                <span class="rp-inf-dato-val">@informeAprendiz.Estado</span>
+                            </div>
+                            <div class="rp-inf-dato">
+                                <span class="rp-inf-dato-lbl">Tipo de Poblacion</span>
+                                <span class="rp-inf-dato-val">@(informeAprendiz.TipoPoblacion ?? "—")</span>
+                            </div>
+                            <div class="rp-inf-dato">
+                                <span class="rp-inf-dato-lbl">Condicion Especial</span>
+                                <span class="rp-inf-dato-val">@(informeAprendiz.CondicionEspecial ?? "—")</span>
+                            </div>
+                            @if (informeAprendiz.ContactoEmergenciaNombre is not null)
+                            {
+                                <div class="rp-inf-dato">
+                                    <span class="rp-inf-dato-lbl">Contacto de Emergencia</span>
+                                    <span class="rp-inf-dato-val">@informeAprendiz.ContactoEmergenciaNombre</span>
+                                </div>
+                                <div class="rp-inf-dato">
+                                    <span class="rp-inf-dato-lbl">Tel. Emergencia</span>
+                                    <span class="rp-inf-dato-val">@(informeAprendiz.ContactoEmergenciaTelefono ?? "—")</span>
+                                </div>
+                            }
+                        </div>
+
+                        @if (informeSinCalif.Count > 0)
+                        {
+                            <hr class="rp-sep" />
+                            <p class="rp-inf-seccion-tit"><i class="bi bi-bell me-1"></i>Avisos Academicos</p>
+                            @foreach (var aviso in informeSinCalif)
+                            {
+                                <div class="rp-inf-aviso">
+                                    <div class="rp-inf-aviso-barra"></div>
+                                    <div>
+                                        <p class="rp-inf-aviso-titulo">@aviso.NombreCompetencia</p>
+                                        <p class="rp-inf-aviso-desc">
+                                            @if (aviso.ResultadosPendientes.Count == 1)
+                                            {
+                                                <text>1 resultado por evaluar: @aviso.ResultadosPendientes[0]</text>
+                                            }
+                                            else
+                                            {
+                                                <text>@aviso.ResultadosPendientes.Count resultados por evaluar: @string.Join(", ", aviso.ResultadosPendientes)</text>
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="rp-instruccion"><i class="bi bi-check-circle text-success me-1"></i>Sin avisos pendientes.</p>
+                        }
+                    }
+
+                    @* ── Tab: Acudiente ── *@
+                    else if (tabInforme == "acudiente")
+                    {
+                        @if (informeAcudiente is null)
+                        {
+                            <p class="rp-vacio">No hay informacion de acudiente registrada.</p>
+                        }
+                        else
+                        {
+                            <div class="rp-inf-datos-grid">
+                                <div class="rp-inf-dato">
+                                    <span class="rp-inf-dato-lbl">Nombre</span>
+                                    <span class="rp-inf-dato-val">@informeAcudiente.Nombre</span>
+                                </div>
+                                <div class="rp-inf-dato">
+                                    <span class="rp-inf-dato-lbl">Parentesco</span>
+                                    <span class="rp-inf-dato-val">@informeAcudiente.Parentesco</span>
+                                </div>
+                                <div class="rp-inf-dato">
+                                    <span class="rp-inf-dato-lbl">Telefono</span>
+                                    <span class="rp-inf-dato-val">@informeAcudiente.Telefono</span>
+                                </div>
+                                <div class="rp-inf-dato">
+                                    <span class="rp-inf-dato-lbl">Correo</span>
+                                    <span class="rp-inf-dato-val">@(informeAcudiente.Correo ?? "—")</span>
+                                </div>
+                                <div class="rp-inf-dato">
+                                    <span class="rp-inf-dato-lbl">Tipo de Documento</span>
+                                    <span class="rp-inf-dato-val">@(informeAcudiente.TipoDocumento ?? "—")</span>
+                                </div>
+                                <div class="rp-inf-dato">
+                                    <span class="rp-inf-dato-lbl">Numero de Documento</span>
+                                    <span class="rp-inf-dato-val">@(informeAcudiente.NumeroDocumento ?? "—")</span>
+                                </div>
+                                <div class="rp-inf-dato">
+                                    <span class="rp-inf-dato-lbl">Direccion</span>
+                                    <span class="rp-inf-dato-val">@(informeAcudiente.Direccion ?? "—")</span>
+                                </div>
+                                <div class="rp-inf-dato">
+                                    <span class="rp-inf-dato-lbl">Genero</span>
+                                    <span class="rp-inf-dato-val">@(informeAcudiente.Genero ?? "—")</span>
+                                </div>
+                                <div class="rp-inf-dato">
+                                    <span class="rp-inf-dato-lbl">Estrato</span>
+                                    <span class="rp-inf-dato-val">@(informeAcudiente.Estrato?.ToString() ?? "—")</span>
+                                </div>
+                            </div>
+                        }
+                    }
+
+                    @* ── Tab: Competencias ── *@
+                    else if (tabInforme == "competencias")
+                    {
+                        @if (informeCompetencias.Count == 0)
+                        {
+                            <p class="rp-vacio">No hay competencias asignadas a esta ficha.</p>
+                        }
+                        else
+                        {
+                            <div class="rp-tabla-wrap">
+                                <table class="table table-hover table-sm rp-tabla">
+                                    <thead>
+                                        <tr>
+                                            <th>Codigo</th>
+                                            <th>Competencia</th>
+                                            <th>Estado</th>
+                                            <th>Periodo</th>
+                                            <th>Horas</th>
+                                            <th>Progreso</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var c in informeCompetencias)
+                                        {
+                                            var hTotal = c.TotalHoras ?? c.HorasAsignadas;
+                                            var pctComp = hTotal == 0 ? 0 : (int)(c.HorasEjecutadas * 100.0 / hTotal);
+                                            <tr>
+                                                <td><small class="rp-codigo">@c.Codigo</small></td>
+                                                <td>@c.Nombre</td>
+                                                <td><span class="rp-badge @CompetenciaBadgeClass(c.Estado)">@c.Estado</span></td>
+                                                <td><small>@c.FechasProgramadas</small></td>
+                                                <td>@c.HorasEjecutadas / @hTotal h</td>
+                                                <td>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="rp-barra">
+                                                            <div class="rp-barra-fill @(c.Estado == "Vista" ? "rp-barra-green" : "")"
+                                                                 style="width:@pctComp%"></div>
+                                                        </div>
+                                                        <span class="rp-pct">@pctComp%</span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    }
+
+                    @* ── Tab: Observaciones ── *@
+                    else if (tabInforme == "observaciones")
+                    {
+                        @if (informeObservaciones.Count == 0)
+                        {
+                            <p class="rp-vacio">No hay observaciones registradas.</p>
+                        }
+                        else
+                        {
+                            @foreach (var obs in informeObservaciones)
+                            {
+                                <div class="rp-inf-aviso rp-inf-aviso-blue">
+                                    <div class="rp-inf-aviso-barra"></div>
+                                    <div>
+                                        <p class="rp-inf-aviso-titulo">@obs.NombreUsuario — @obs.Fecha.ToString("dd/MM/yyyy HH:mm")</p>
+                                        <p class="rp-inf-aviso-desc">@obs.Descripcion</p>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        <p class="rp-instruccion mt-2"><i class="bi bi-info-circle me-1"></i>Para agregar observaciones abra el informe completo.</p>
+                    }
+
+                    <hr class="rp-sep" />
+
+                    @* ── Acciones finales ── *@
+                    <div class="rp-inf-footer">
+                        <p class="rp-inf-footer-txt"><i class="bi bi-info-circle me-1"></i>Para editar acudiente u observaciones use el informe completo.</p>
+                        <a class="rp-btn-primary rp-btn-lg"
+                           href="/aprendices/@aprendizInformeId/informe"
+                           target="_blank">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>Abrir Informe / Generar PDF
+                        </a>
+                    </div>
+                }
+                else if (aprendicesInforme.Count > 0)
+                {
+                    <p class="rp-instruccion"><i class="bi bi-arrow-up-circle me-2"></i>Seleccione un aprendiz para ver su informe.</p>
+                }
+                else
+                {
+                    <p class="rp-instruccion"><i class="bi bi-arrow-up-circle me-2"></i>Seleccione una ficha para ver los aprendices disponibles.</p>
+                }
+            }
+
+        </div>@* /rp-card *@
+    </div>@* /rp-root *@
+}
+
+@code {
+    // ── Exportacion Excel (baja los bytes por el HttpClient autenticado y
+    //    dispara la descarga en el navegador via JS interop) ──────────────────
+    private async Task DescargarExcelGlobal()
+    {
+        var (bytes, nombre) = await ReportesApi.DescargarExcelGlobalAsync();
+        if (bytes is null) return;
+        await JS.InvokeVoidAsync("downloadBytesAsFile", nombre, bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    }
+
+    private async Task DescargarExcelAsistencia()
+    {
+        var (bytes, nombre) = await ReportesApi.DescargarExcelAsistenciaAsync(FichaSeleccionada);
+        if (bytes is null) return;
+        await JS.InvokeVoidAsync("downloadBytesAsFile", nombre, bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    }
+
+    private async Task DescargarExcelCompetencias()
+    {
+        var (bytes, nombre) = await ReportesApi.DescargarExcelCompetenciasAsync(FichaSeleccionada);
+        if (bytes is null) return;
+        await JS.InvokeVoidAsync("downloadBytesAsFile", nombre, bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    }
+
+    // ── Tipos de reporte ──────────────────────────────────────────────────────
+    private record TipoReporteItem(string Key, string Label, string Icono, string Subtitulo);
+
+    private List<TipoReporteItem> TiposReporte =>
+    [
+        new("global",             "Resumen Global",         "bi-grid-3x3-gap",      "Vista consolidada de todas las fichas"),
+        new("asistencia",         "Asistencia",             "bi-calendar-check",    "Control de asistencia por ficha"),
+        new("competencias-ficha", "Prog. Competencias",     "bi-graph-up",          "Avance por competencia en cada ficha"),
+        new("juicios",            "Juicios Evaluativos",    "bi-award",             "Resultados de evaluacion por ficha"),
+        new("instructor",         "Por Instructor",         "bi-person-badge",      "Carga academica del instructor"),
+        new("competencia",        "Por Competencia",        "bi-book",              "Estado de una competencia en cada ficha"),
+        new("patrocinio",         "Patrocinio",             "bi-building",          "Aprendices vinculados a empresa"),
+        new("informe-individual", "Informe Individual",     "bi-person-lines-fill", "Informe academico por aprendiz en PDF"),
+    ];
+
+    // ── Agrupacion de juicios por aprendiz (solo UI, sin logica de negocio) ───
+    private record JuicioAprendizGrupo(string NombreCompleto, string NumeroDocumento, List<ReporteJuicioFila> Filas)
+    {
+        public int Aprobados        => Filas.Count(f => f.Juicio == "Aprobado");
+        public int PorEvaluar       => Filas.Count(f => f.Juicio != "Aprobado");
+        public int Total            => Filas.Count;
+        public int PorcentajeAvance => Total == 0 ? 0 : (int)(Aprobados * 100.0 / Total);
+
+        public IEnumerable<IGrouping<string, ReporteJuicioFila>> PorCompetencia =>
+            Filas.GroupBy(f => f.CodigoCompetencia);
+    }
+
+    private IEnumerable<JuicioAprendizGrupo> JuiciosPorAprendiz =>
+        reporteJuicios?.Filas
+            .GroupBy(f => f.NumeroDocumento)
+            .Select(g => new JuicioAprendizGrupo(g.First().NombreCompleto, g.Key, g.ToList()))
+        ?? [];
+
+    // ── Estado ────────────────────────────────────────────────────────────────
+    private string  TipoActivo                = "global";
+    private bool    inicializando             = true;
+    private bool    cargando                  = false;
+    private bool    cargandoAprendicesInforme = false;
+    private bool    cargandoInforme           = false;
+    private string? errorMensaje;
+
+    private string FichaSeleccionada       = string.Empty;
+    private int    InstructorSeleccionado  = 0;
+    private int    CompetenciaSeleccionada = 0;
+    private int    aprendizInformeId       = 0;
+    private string tabInforme              = "personal";
+
+    // ── Datos de reportes ─────────────────────────────────────────────────────
+    private List<ReporteGlobalFichaDTO>     resumenGlobal     = [];
+    private ReporteAsistenciaFichaDTO?      reporteAsistencia;
+    private ReporteProgresoCompetenciasDTO? reporteProgreso;
+    private ReporteJuiciosDTO?              reporteJuicios;
+    private ReporteInstructorDTO?           reporteInstructor;
+    private ReporteCompetenciaDTO?          reporteCompetencia;
+    private List<ReportePatrocinioDTO>      reportePatrocinio = [];
+    private List<AprendizFichaDTO>          aprendicesInforme = [];
+
+    // ── Datos del informe individual inline ───────────────────────────────────
+    private AprendizDetalleDTO?              informeAprendiz      = null;
+    private FichaDetallesDTO?                informeFichaDetalle  = null;
+    private AprendizFichaDTO?                informeAprendizFicha = null;
+    private List<CompetenciaFichaDTO>        informeCompetencias  = [];
+    private List<CompetenciaSinCalificarDTO> informeSinCalif      = [];
+    private AcudienteDTO?                    informeAcudiente     = null;
+    private List<ObservacionAprendizDTO>     informeObservaciones = [];
+
+    // Contadores del informe (equivalentes a los de Informe.razor)
+    private int InformeCompProgramadas => informeCompetencias.Count(c => c.Estado is "Programada" or "En Curso" or "Vista");
+    private int InformeCompEnCurso     => informeCompetencias.Count(c => c.Estado is "En Curso" or "Programada");
+    private int InformeCompSinCalif    => informeSinCalif.Count;
+
+    // Selectores
+    private List<FichaDTO>                                              fichas       = [];
+    private List<InstructorSelectorDTO>                                 instructores = [];
+    private List<AdsoLabs.Application.DTOs.Competencia.CompetenciaDTO> competencias = [];
+
+    // ── Ciclo de vida ─────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Admins ven todas las fichas (idUsuario=0 omite el filtro por instructor).
+            fichas       = await FichaApi.ObtenerFichasAsync(SesionService.EsInstructor ? SesionService.IdUsuario : 0);
+            competencias = await CompetenciaApi.ObtenerCompetenciasAsync();
+
+            if (SesionService.EsAdministrador)
+                instructores = await ReportesApi.ObtenerSelectorInstructoresAsync();
+
+            await CargarReporteActual();
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al inicializar la pagina: {ex.Message}";
+        }
+        finally
+        {
+            inicializando = false;
+        }
+    }
+
+    // ── Seleccion de tipo ─────────────────────────────────────────────────────
+    private async Task SeleccionarTipo(string tipo)
+    {
+        TipoActivo              = tipo;
+        FichaSeleccionada       = string.Empty;
+        InstructorSeleccionado  = 0;
+        CompetenciaSeleccionada = 0;
+        aprendizInformeId       = 0;
+        aprendicesInforme       = [];
+        reporteAsistencia       = null;
+        reporteProgreso         = null;
+        reporteJuicios          = null;
+        reporteInstructor       = null;
+        reporteCompetencia      = null;
+        errorMensaje            = null;
+        LimpiarInforme();
+
+        await CargarReporteActual();
+    }
+
+    private void LimpiarInforme()
+    {
+        informeAprendiz      = null;
+        informeFichaDetalle  = null;
+        informeAprendizFicha = null;
+        informeCompetencias  = [];
+        informeSinCalif      = [];
+        informeAcudiente     = null;
+        informeObservaciones = [];
+        tabInforme           = "personal";
+        cargandoInforme      = false;
+    }
+
+    private async Task CargarReporteActual()
+    {
+        cargando = true;
+        StateHasChanged();
+        try
+        {
+            switch (TipoActivo)
+            {
+                case "global":
+                    resumenGlobal = await ReportesApi.ObtenerResumenGlobalAsync(SesionService.IdUsuario);
+                    break;
+                case "patrocinio":
+                    reportePatrocinio = await ReportesApi.ObtenerPatrociniosAsync(SesionService.IdUsuario);
+                    break;
+                case "instructor" when SesionService.EsInstructor:
+                    reporteInstructor = await ReportesApi.ObtenerReporteInstructorAsync(0, SesionService.IdUsuario);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar el reporte: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    // ── Event handlers ────────────────────────────────────────────────────────
+    private async Task OnFichaChanged(ChangeEventArgs e)
+    {
+        FichaSeleccionada = e.Value?.ToString() ?? string.Empty;
+        if (string.IsNullOrEmpty(FichaSeleccionada)) return;
+
+        errorMensaje = null;
+        cargando     = true;
+        StateHasChanged();
+        try
+        {
+            switch (TipoActivo)
+            {
+                case "asistencia":
+                    reporteAsistencia = await ReportesApi.ObtenerAsistenciaFichaAsync(FichaSeleccionada, SesionService.IdUsuario);
+                    break;
+                case "competencias-ficha":
+                    reporteProgreso = await ReportesApi.ObtenerProgresoCompetenciasAsync(FichaSeleccionada, SesionService.IdUsuario);
+                    break;
+                case "juicios":
+                    reporteJuicios = await ReportesApi.ObtenerJuiciosAsync(FichaSeleccionada, SesionService.IdUsuario);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al obtener el reporte: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task OnFichaInformeChanged(ChangeEventArgs e)
+    {
+        var ficha = e.Value?.ToString() ?? string.Empty;
+        aprendizInformeId = 0;
+        aprendicesInforme = [];
+        LimpiarInforme();
+
+        if (string.IsNullOrEmpty(ficha)) return;
+
+        errorMensaje              = null;
+        cargandoAprendicesInforme = true;
+        StateHasChanged();
+        try
+        {
+            aprendicesInforme = await FichaApi.ObtenerAprendicesAsync(ficha);
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar aprendices: {ex.Message}";
+        }
+        finally
+        {
+            cargandoAprendicesInforme = false;
+        }
+    }
+
+    private async Task OnAprendizInformeChanged(ChangeEventArgs e)
+    {
+        aprendizInformeId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        LimpiarInforme();
+
+        if (aprendizInformeId > 0)
+            await CargarInformeAprendizAsync(aprendizInformeId);
+    }
+
+    private async Task CargarInformeAprendizAsync(int idAprendiz)
+    {
+        cargandoInforme = true;
+        errorMensaje    = null;
+        StateHasChanged();
+        try
+        {
+            informeAprendiz = await InformeApi.ObtenerDatosAprendizAsync(idAprendiz);
+            if (informeAprendiz is not null)
+            {
+                var ficha = informeAprendiz.Ficha.FirstOrDefault();
+                if (ficha is not null)
+                {
+                    var t1 = FichaApi.ObtenerDatosAsync(ficha);
+                    var t2 = FichaApi.ObtenerAprendicesAsync(ficha);
+                    var t3 = FichaApi.ObtenerFichaCompetenciaAsync(ficha);
+                    var t4 = InformeApi.ObtenerCompetenciasSinCalificarAsync(idAprendiz, ficha);
+                    var t5 = InformeApi.ObtenerAcudienteAsync(idAprendiz);
+                    var t6 = InformeApi.ObtenerObservacionesAsync(idAprendiz);
+                    await Task.WhenAll(t1, t2, t3, t4, t5, t6);
+                    informeFichaDetalle  = t1.Result;
+                    informeAprendizFicha = t2.Result.FirstOrDefault(a => a.IdAprendiz == idAprendiz);
+                    informeCompetencias  = t3.Result;
+                    informeSinCalif      = t4.Result;
+                    informeAcudiente     = t5.Result;
+                    informeObservaciones = t6.Result;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al cargar el informe del aprendiz: {ex.Message}";
+        }
+        finally
+        {
+            cargandoInforme = false;
+        }
+    }
+
+    private async Task OnInstructorChanged(ChangeEventArgs e)
+    {
+        InstructorSeleccionado = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        if (InstructorSeleccionado == 0) return;
+
+        errorMensaje = null;
+        cargando     = true;
+        StateHasChanged();
+        try
+        {
+            reporteInstructor = await ReportesApi.ObtenerReporteInstructorAsync(InstructorSeleccionado, SesionService.IdUsuario);
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al obtener el reporte: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task OnCompetenciaChanged(ChangeEventArgs e)
+    {
+        CompetenciaSeleccionada = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        if (CompetenciaSeleccionada == 0) return;
+
+        errorMensaje = null;
+        cargando     = true;
+        StateHasChanged();
+        try
+        {
+            reporteCompetencia = await ReportesApi.ObtenerReporteCompetenciaAsync(CompetenciaSeleccionada, SesionService.IdUsuario);
+        }
+        catch (Exception ex)
+        {
+            errorMensaje = $"Error al obtener el reporte: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    // ── Helpers CSS ───────────────────────────────────────────────────────────
+    private static string EstadoAprendizBadge(string estado) => estado switch
+    {
+        "EN FORMACION" or "En Formacion" => "rp-badge-activa",
+        "CANCELADO"    or "Cancelado"    => "rp-badge-riesgo",
+        "TRASLADADO"   or "Trasladado"   => "rp-badge-por-evaluar",
+        _                                => "rp-badge-gris"
+    };
+
+    private static string EstadoBadgeClass(string estado) => estado switch
+    {
+        "Activa"     => "rp-badge-activa",
+        "Finalizada" => "rp-badge-finalizada",
+        _            => "rp-badge-gris"
+    };
+
+    private static string CompetenciaBadgeClass(string estado) => estado switch
+    {
+        "Vista"      => "rp-badge-vista",
+        "En Curso"   => "rp-badge-en-curso",
+        "Programada" => "rp-badge-programada",
+        _            => "rp-badge-gris"
+    };
+
+    private static string JuicioBadgeClass(string? juicio) => juicio switch
+    {
+        "Aprobado"    => "rp-badge-aprobado",
+        "Por Evaluar" => "rp-badge-por-evaluar",
+        null          => "rp-badge-gris",
+        _             => "rp-badge-por-evaluar"
+    };
+
+    private static string HbarColor(int pct) => pct switch
+    {
+        >= 80 => "rp-hbar-green",
+        >= 50 => "rp-hbar-amber",
+        _     => "rp-hbar-red"
+    };
+}

@@ -1,0 +1,707 @@
+body { background-color: #F4F6FB; }
+
+/* ── Sección principal ──────────────────────────────────────────────────── */
+.importaciones {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding-bottom: 2rem;
+}
+
+.importaciones h1 {
+    font-size: 2rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    color: #1E293B;
+    margin-top: 2rem;
+    margin-bottom: .2rem;
+}
+
+.importaciones h2 {
+    font-size: 0.9rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    color: #64748B;
+}
+
+.if-subtitulo {
+    font-size: .9rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    color: #94A3B8;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+/* ── Contenedor horizontal fichas | aprendices ──────────────────────────── */
+.paneles-duo {
+    display: flex;
+    flex-direction: row;
+    gap: 1.25rem;
+    align-items: stretch;
+}
+
+.paneles-duo > .panel-importar {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 900px) {
+    .paneles-duo {
+        flex-direction: column;
+    }
+}
+
+/* ── Paneles ────────────────────────────────────────────────────────────── */
+.panel-importar,
+.panel-historial {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 2px 20px rgba(59,130,246,.07);
+    border: 1px solid #F1F5F9;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.125rem;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.panel-header i { font-size: 1.25rem; color: #4F46E5; }
+
+/* ── Selector de ficha ──────────────────────────────────────────────────── */
+.zona-selector-ficha {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.selector-label {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    white-space: nowrap;
+}
+
+.selector-ficha {
+    flex: 1;
+    min-width: 220px;
+    max-width: 440px;
+    height: 42px;
+    padding: 0 0.875rem;
+    border: 1px solid #D1D5DB;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    color: #1E293B;
+    background: white;
+    cursor: pointer;
+    transition: border-color .15s ease;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='%234F46E5' d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 2.25rem;
+}
+
+.selector-ficha:focus {
+    outline: none;
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 3px rgba(79,70,229,.12);
+}
+
+/* ── Zona de carga ──────────────────────────────────────────────────────── */
+.zona-carga {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 0.5rem;
+}
+
+.btn-seleccionar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+    padding: 0 16px;
+    border-radius: 10px;
+    border: 2px dashed rgba(79,70,229,0.35);
+    background: #F5F3FF;
+    color: #4F46E5;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background .15s ease;
+    max-width: 340px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.btn-seleccionar:hover { background: #EDE9FE; }
+.btn-seleccionar i { font-size: 1.125rem; flex-shrink: 0; }
+
+.btn-importar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 1.5rem;
+    height: 42px;
+    border-radius: 10px;
+    border: none;
+    background: #4F46E5;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.btn-importar:hover:not(:disabled) { background: #4338CA; }
+.btn-importar:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Alertas ────────────────────────────────────────────────────────────── */
+.alerta-error {
+    background: #FEF2F2;
+    color: #B91C1C;
+    border: 1px solid #FCA5A5;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.texto-ok    { color: #15803D; }
+.texto-error { color: #DC2626; }
+
+/* ── Resumen de importación ─────────────────────────────────────────────── */
+.resumen-importacion {
+    background: #F0FDF4;
+    border: 1px solid #86EFAC;
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.resumen-titulo {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #1E293B;
+}
+
+.resumen-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+}
+
+.resumen-item {
+    background: white;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border: 1px solid #E5E7EB;
+}
+
+.resumen-num {
+    font-size: 1.5rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    line-height: 1.1;
+    color: #1E293B;
+}
+
+.resumen-item.texto-ok .resumen-num  { color: #15803D; }
+.resumen-item.texto-error .resumen-num { color: #DC2626; }
+
+.resumen-lbl {
+    font-size: 0.6875rem;
+    font-family: 'Poppins', sans-serif;
+    color: #64748B;
+    text-align: center;
+    margin-top: 2px;
+}
+
+/* ── Detalle errores (post importación) ─────────────────────────────────── */
+.detalle-errores {
+    background: #FEF2F2;
+    border: 1px solid #FCA5A5;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+}
+
+.errores-titulo {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    color: #991B1B;
+}
+
+.lista-errores {
+    margin: 0;
+    padding-left: 1.125rem;
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    color: #991B1B;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* ── Historial ──────────────────────────────────────────────────────────── */
+.btn-refrescar {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #4F46E5;
+    font-size: 1.125rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: color .15s ease, background .15s ease;
+}
+
+.btn-refrescar:hover { color: #4338CA; background: #F5F3FF; }
+
+.cargando, .vacio {
+    color: #94A3B8;
+    font-size: 0.9375rem;
+    font-family: 'Poppins', sans-serif;
+    padding: 1rem 0;
+    text-align: center;
+}
+
+.tabla-historial {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.tabla-hist-header {
+    display: grid;
+    grid-template-columns: 140px 1fr 160px 120px 100px 80px 70px;
+    background: #F8FAFC;
+    color: #64748B;
+    padding: 10px 14px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    gap: 8px;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.tabla-hist-fila {
+    display: grid;
+    grid-template-columns: 140px 1fr 160px 120px 100px 80px 70px;
+    padding: 10px 14px;
+    border-bottom: 1px solid #F1F5F9;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    color: #374151;
+    align-items: center;
+    gap: 8px;
+    transition: background .12s ease;
+}
+
+.tabla-hist-fila:last-child { border-bottom: none; }
+.tabla-hist-fila:hover { background: #F8F7FF; }
+
+.nombre-archivo {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Badges de estado ───────────────────────────────────────────────────── */
+.badge-estado {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.6875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+}
+
+.badge-ok        { background: #DCFCE7; color: #15803D; }
+.badge-error     { background: #FEE2E2; color: #991B1B; }
+.badge-pendiente { background: #FEF9C3; color: #92400E; }
+
+/* ── Panel errores del historial ────────────────────────────────────────── */
+.panel-errores-hist {
+    background: #FEF2F2;
+    border-top: 1px solid #FCA5A5;
+    padding: 0.875rem 1.125rem;
+}
+
+.btn-cerrar-err {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #64748B;
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 2px 4px;
+}
+
+.btn-cerrar-err:hover { color: #1E293B; }
+
+.tabla-err {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    margin-top: 8px;
+}
+
+.tabla-err th {
+    text-align: left;
+    padding: 6px 10px;
+    background: #FEE2E2;
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: #991B1B;
+}
+
+.tabla-err td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #FECACA;
+    color: #7F1D1D;
+}
+
+.btn-detalle {
+    background: none;
+    border: none;
+    color: #4F46E5;
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 2px 4px;
+    transition: color .15s ease;
+}
+
+.btn-detalle:hover { color: #4338CA; }
+
+/* ── Paginación del historial ───────────────────────────────────────────── */
+.paginacion-historial {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #E2E8F0;
+    background: #FAFAFA;
+}
+
+.info-registros-hist {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    color: #64748B;
+}
+
+.grupo-paginacion-hist {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pagina-info-hist {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    color: #374151;
+    min-width: 50px;
+    text-align: center;
+}
+
+.btn-pag-hist {
+    background: none;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    color: #4F46E5;
+    font-size: 0.875rem;
+    transition: background .15s ease;
+}
+
+.btn-pag-hist:hover:not(:disabled) { background: #EDE9FE; }
+
+.btn-pag-hist:disabled {
+    color: #D1D5DB;
+    cursor: default;
+    border-color: #F3F4F6;
+}
+
+/* ── Importar Fichas — elementos adicionales ─────────────────────────────── */
+.if-descripcion {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    color: #64748B;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.if-fichas-tag {
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    color: #374151;
+    background: #F0FDF4;
+    border: 1px solid #86EFAC;
+    border-radius: 20px;
+    padding: 2px 10px;
+    margin-left: 8px;
+}
+
+.btn-ver-estructura {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: 1px solid rgba(79,70,229,.25);
+    border-radius: 8px;
+    padding: 5px 12px;
+    color: #4F46E5;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.btn-ver-estructura:hover { background: #EDE9FE; }
+
+.btn-descargar-plantilla {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 1.25rem;
+    height: 42px;
+    border-radius: 10px;
+    border: 1px solid #1D4ED8;
+    background: white;
+    color: #1D4ED8;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s ease;
+}
+
+.btn-descargar-plantilla:hover:not(:disabled) { background: #EFF6FF; }
+.btn-descargar-plantilla:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Modal: Estructura plantilla ────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fade-in .18s ease;
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal-estructura {
+    background: white;
+    border-radius: 20px;
+    padding: 1.75rem 1.75rem 1.5rem;
+    width: min(780px, 95vw);
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.125rem;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.18);
+    animation: slide-up .20s ease;
+}
+
+@keyframes slide-up {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+.me-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.me-titulo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: #1E293B;
+}
+
+.me-titulo i { font-size: 1.25rem; color: #4F46E5; }
+
+.me-btn-x {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: #F3F4F6;
+    border-radius: 8px;
+    color: #64748B;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.me-btn-x:hover { background: #E5E7EB; color: #1E293B; }
+
+.me-descripcion {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    color: #64748B;
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* ── Tabla de columnas del modal ─────────────────────────────────────────── */
+.me-tabla-cols {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.me-col-header {
+    display: grid;
+    grid-template-columns: 60px 180px 90px 1fr;
+    background: #4F46E5;
+    color: white;
+    padding: 10px 14px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.03em;
+    gap: 10px;
+}
+
+.me-col-fila {
+    display: grid;
+    grid-template-columns: 60px 180px 90px 1fr;
+    padding: 10px 14px;
+    border-top: 1px solid #F1F5F9;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    color: #374151;
+    gap: 10px;
+    align-items: start;
+    transition: background .12s ease;
+}
+
+.me-col-fila:hover { background: #FAFAFA; }
+
+.me-col-letra {
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: #4F46E5;
+    background: #F5F3FF;
+    border-radius: 6px;
+    padding: 2px 8px;
+    text-align: center;
+    width: fit-content;
+}
+
+.me-col-nombre {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.me-badge-si {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.6875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    background: #DCFCE7;
+    color: #15803D;
+    width: fit-content;
+}
+
+.me-badge-no {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.6875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    background: #F3F4F6;
+    color: #64748B;
+    width: fit-content;
+}
+
+/* ── Footer del modal ────────────────────────────────────────────────────── */
+.me-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    padding-top: 4px;
+    border-top: 1px solid #F1F5F9;
+}
+
+.btn-cerrar-modal {
+    padding: 0 1.5rem;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid #E2E8F0;
+    background: white;
+    color: #374151;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.btn-cerrar-modal:hover { background: #F3F4F6; }

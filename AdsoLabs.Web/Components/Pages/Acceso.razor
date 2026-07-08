@@ -1,0 +1,299 @@
+@page "/acceso"
+@using AdsoLabs.Web.Components.Layout
+@using AdsoLabs.Web.Services
+@layout LoginLayout
+@attribute [AllowAnonymous]
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+@inject SesionService SesionService
+@inject NavigationManager navigation
+
+<div class="acceso-wrapper">
+
+    <!-- Header oscuro con título -->
+    <div class="acceso-header">
+        <div class="header-overlay"></div>
+        <div class="header-contenido">
+            <h1>¿No puedes iniciar sesión?</h1>
+            <p>Selecciona una de las siguientes opciones según tu situación para continuar.</p>
+        </div>
+    </div>
+
+    <!-- Tarjetas en fila -->
+    <div class="tarjetas-wrapper">
+
+        <div class="tarjeta @(sel == "activar" ? "tarjeta-activa" : "")"
+             @onclick='() => sel = "activar"'>
+            <div class="tarjeta-icono">
+                <div class="tarjeta-icono">
+                    <div class="icono-pincel" style="background: linear-gradient(135deg, #27187E, #6a4fd6);"></div>
+                    <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                        <polyline points="16 11 18 13 22 9" />
+                    </svg>
+                </div>
+            </div>
+            <h2>Activar cuenta</h2>
+            <p>Soy aprendiz y quiero acceder por primera vez al sistema.</p>
+            <div class="tarjeta-check @(sel == "activar" ? "check-on" : "")">✓</div>
+        </div>
+
+        <div class="tarjeta @(sel == "recuperar" ? "tarjeta-activa" : "")"
+             @onclick='() => sel = "recuperar"'>
+            <div class="tarjeta-icono">
+                <div class="icono-pincel" style="background: linear-gradient(135deg, #1a3a8e, #4a7ad6);"></div>
+                <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+            </div>
+            <h2>Recuperar contraseña</h2>
+            <p>Ya tengo cuenta pero olvidé mi contraseña y necesito restablecerla.</p>
+            <div class="tarjeta-check @(sel == "recuperar" ? "check-on" : "")">✓</div>
+        </div>
+
+    </div>
+
+    <!-- Botones -->
+    <div class="acceso-footer">
+        <button class="btn-continuar" @onclick="Continuar" disabled="@(sel == null)">
+            Continuar
+        </button>
+    </div>
+
+</div>
+
+<style>
+    .acceso-wrapper {
+        min-height: 100vh;
+        background: #f4f4f4;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    /* ── Header oscuro ── */
+    .acceso-header {
+        width: 100%;
+        position: relative;
+        background: #1a1a1a;
+        padding: 80px 40px;
+        text-align: center;
+        overflow: hidden;
+    }
+
+        .acceso-header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: repeating-linear-gradient( 45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 60px ), repeating-linear-gradient( -45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 60px );
+            pointer-events: none;
+        }
+
+    .header-contenido {
+        position: relative;
+        z-index: 1;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+        .header-contenido h1 {
+            font-size: clamp(32px, 5vw, 56px);
+            font-weight: 900;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            margin-bottom: 20px;
+            line-height: 1.1;
+        }
+
+        .header-contenido p {
+            font-size: 16px;
+            color: #b3b3b3;
+            line-height: 1.6;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+    /* ── Tarjetas ── */
+    .tarjetas-wrapper {
+        display: flex;
+        flex-direction: row;
+        gap: 28px;
+        padding: 60px 40px;
+        max-width: 900px;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .tarjeta {
+        flex: 1;
+        max-width: 380px;
+        background: white;
+        border-radius: 12px;
+        padding: 40px 32px 36px;
+        text-align: center;
+        cursor: pointer;
+        border: 2px solid transparent;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+        position: relative;
+        user-select: none;
+    }
+
+        .tarjeta:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+        }
+
+    .tarjeta-activa {
+        border-color: #27187E;
+        box-shadow: 0 12px 36px rgba(39, 24, 126, 0.18);
+        background-color: #fcfcff;
+    }
+
+    /* ── Iconos con fondo total ── */
+    .tarjeta-icono {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .icono-pincel {
+        position: absolute;
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+    }
+
+    .tarjeta-icono svg {
+        position: relative;
+        z-index: 2;
+        width: 32px;
+        height: 32px;
+        stroke: #ffffff;
+        stroke-width: 2.2px;
+        fill: none;
+    }
+
+    .tarjeta h2 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 12px;
+    }
+
+    .tarjeta p {
+        font-size: 14px;
+        color: #595959;
+        line-height: 1.6;
+    }
+
+    /* ── Check de selección ── */
+    .tarjeta-check {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #27187E;
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transform: scale(0.6);
+        transition: all 0.2s ease;
+    }
+
+    .check-on {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    /* ── Footer ── */
+    .acceso-footer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        padding-bottom: 60px;
+    }
+
+    .btn-continuar {
+        width: 320px;
+        height: 56px;
+        border-radius: 30px;
+        background-color: #27187E;
+        color: white;
+        font-size: 18px;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+    }
+
+
+        .btn-continuar:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+    .btn-volver {
+        font-size: 14px;
+        color: #27187E;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+        .btn-volver:hover {
+            text-decoration: underline;
+        }
+
+    @@media (max-width: 700px) {
+        .tarjetas-wrapper
+
+    {
+        flex-direction: column;
+        align-items: center;
+        padding: 40px 24px;
+    }
+
+    .tarjeta {
+        max-width: 100%;
+    }
+
+    }</style>
+
+@code {
+
+    protected override void OnInitialized()
+    {
+        if (SesionService.EstaAutenticado)
+        {
+            navigation.NavigateTo("/logouthandler", forceLoad: true);
+        }
+    }
+
+}
+
+@code {
+    private string? sel;
+
+    private void Continuar()
+    {
+        if (sel == "activar")
+            Navigation.NavigateTo("/activar-cuenta");
+        else if (sel == "recuperar")
+            Navigation.NavigateTo("/password");
+    }
+}

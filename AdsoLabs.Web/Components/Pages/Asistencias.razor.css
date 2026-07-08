@@ -1,0 +1,708 @@
+/* ═══════════════════════════════════════════════════════════════
+   Asistencias.razor.css
+   Página principal de Gestión de Asistencias
+═══════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.asistencias {
+    font-family: 'Poppins', sans-serif;
+    min-height: calc(100vh - 60px);
+    padding: 2rem 0 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    color: #1E293B;
+}
+
+/* ── Encabezado de página ──────────────────────────────────── */
+.page-header h1 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin: 0;
+}
+
+.page-header p {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 400;
+    color: #64748B;
+    margin: 4px 0 0;
+}
+
+/* ── Layout de dos paneles ─────────────────────────────────── */
+.contenedor-principal {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 20px;
+    align-items: start;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Panel izquierdo: fichas
+══════════════════════════════════════════════════════════════ */
+.panel-fichas {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 20px rgba(59,130,246,.07);
+    overflow: hidden;
+}
+
+.panel-titulo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    background: #4F46E5;
+    color: #fff;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.8125rem;
+    border-radius: 14px 14px 0 0;
+    letter-spacing: 0.01em;
+}
+
+.lista-fichas { display: flex; flex-direction: column; }
+
+.ficha-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 18px;
+    border: none;
+    background: #fff;
+    cursor: pointer;
+    text-align: left;
+    border-bottom: 1px solid #F1F5F9;
+    transition: background 0.15s;
+    width: 100%;
+    font-family: 'Poppins', sans-serif;
+}
+
+.ficha-card:hover { background: #F5F3FF; }
+
+.ficha-card.activa {
+    background: #EDE9FE;
+    border-left: 3px solid #4F46E5;
+}
+
+.ficha-numero {
+    font-weight: 700;
+    font-size: 0.8125rem;
+    color: #1E293B;
+    min-width: 68px;
+}
+
+.ficha-nombre {
+    font-size: 0.75rem;
+    color: #64748B;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ficha-estado {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 99px;
+}
+
+.estado-activa     { background: #D1FAE5; color: #065F46; }
+.estado-finalizada { background: #E2E8F0; color: #64748B; }
+.estado-otro       { background: #FEF3C7; color: #92400E; }
+
+.ficha-flecha { color: #94A3B8; font-size: 11px; margin-left: auto; }
+
+/* ══════════════════════════════════════════════════════════════
+   Panel derecho: programación
+══════════════════════════════════════════════════════════════ */
+.panel-programacion {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 2px 20px rgba(59,130,246,.07);
+    padding: 20px 22px;
+    min-height: 320px;
+    overflow: hidden;
+}
+
+/* Estado vacío / cargando */
+.estado-vacio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    gap: 10px;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+}
+
+.estado-vacio i   { font-size: 38px; color: #C4B5FD; }
+.estado-vacio p   { font-size: 0.875rem; margin: 0; color: #94A3B8; }
+.estado-vacio.grande { min-height: 280px; }
+
+.spinner {
+    width: 34px; height: 34px;
+    border: 3px solid #E2E8F0;
+    border-top-color: #4F46E5;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Cabecera: título + tabs ───────────────────────────────── */
+.programacion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #F1F5F9;
+}
+
+.ph-titulo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ph-titulo h2 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1E293B;
+    margin: 0;
+}
+
+.badge-total {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: #EDE9FE;
+    color: #4F46E5;
+    padding: 3px 10px;
+    border-radius: 99px;
+}
+
+/* ── Tabs semanal / lista ──────────────────────────────────── */
+.vista-tabs {
+    display: flex;
+    gap: 4px;
+    background: #F1F5F9;
+    border-radius: 8px;
+    padding: 3px;
+}
+
+.tab-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #64748B;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+
+.tab-btn:hover { color: #1E293B; }
+
+.tab-activa {
+    background: #fff;
+    color: #4F46E5;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   VISTA SEMANAL — Calendario
+══════════════════════════════════════════════════════════════ */
+.cal-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Navegación de semana */
+.cal-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cal-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #1E293B;
+    font-size: 13px;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.cal-nav-btn:hover {
+    background: #EDE9FE;
+    border-color: #C4B5FD;
+    color: #4F46E5;
+}
+
+.cal-rango {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.cal-btn-hoy {
+    background: #4F46E5;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-left: auto;
+}
+
+.cal-btn-hoy:hover { background: #4338CA; }
+
+.cal-btn-primera {
+    background: transparent;
+    color: #6B7280;
+    border: 1px solid #D1D5DB;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    white-space: nowrap;
+}
+
+.cal-btn-primera:hover { border-color: #4F46E5; color: #4F46E5; background: #EEF2FF; }
+
+/* Separador visual entre grupos de controles */
+.cal-nav-sep {
+    width: 1px;
+    height: 20px;
+    background: #E2E8F0;
+    margin: 0 4px;
+}
+
+/* Label "Ir a:" */
+.cal-ir-label {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748B;
+    white-space: nowrap;
+}
+
+/* Input de fecha para salto directo */
+.cal-fecha-input {
+    border: 1.5px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    color: #1E293B;
+    background: #fff;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.cal-fecha-input:focus,
+.cal-fecha-input:hover {
+    border-color: #4F46E5;
+}
+
+/* Wrapper con scroll horizontal — sincroniza cabecera y grid */
+.cal-x-scroll {
+    overflow-x: auto;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+}
+
+/* Cabecera de días */
+.cal-dias-header {
+    display: grid;
+    grid-template-columns: 48px repeat(6, minmax(160px, 1fr));
+    min-width: calc(48px + 6 * 160px);
+    border-bottom: 1.5px solid #E2E8F0;
+    background: #F8FAFC;
+}
+
+.cal-eje-ph { /* placeholder para el eje de horas */ }
+
+.cal-dia-cab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0;
+    border-left: 1px solid #F1F5F9;
+    gap: 3px;
+}
+
+.cal-dia-cab-hoy { background: #F5F3FF; }
+
+.cal-dia-nombre {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.cal-dia-num {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1E293B;
+    line-height: 1;
+}
+
+.cal-dia-num-hoy {
+    background: #4F46E5;
+    color: #fff;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9375rem;
+}
+
+/* Scroll vertical del grid — el horizontal lo maneja cal-x-scroll */
+.cal-scroll {
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 520px;
+}
+
+/* Grid: eje + 6 columnas con ancho mínimo garantizado */
+.cal-grid {
+    display: grid;
+    grid-template-columns: 48px repeat(6, minmax(160px, 1fr));
+    min-width: calc(48px + 6 * 160px);
+}
+
+/* Eje de horas */
+.cal-eje {
+    position: relative;
+    border-right: 1px solid #E2E8F0;
+    background: #F8FAFC;
+}
+
+.cal-hora-lbl {
+    position: absolute;
+    right: 6px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.625rem;
+    color: #94A3B8;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Primera etiqueta (6:00): no desplazar hacia arriba o queda fuera del área */
+.cal-hora-lbl:first-child {
+    transform: none;
+}
+
+/* Columna de día */
+.cal-col {
+    position: relative;
+    border-left: 1px solid #F1F5F9;
+}
+
+.cal-col-hoy { background: #FAFBFF; }
+
+/* Líneas de hora (guías de fondo) */
+.cal-linea {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #F1F5F9;
+    pointer-events: none;
+}
+
+/* Bloque de resultado */
+.cal-bloque {
+    position: absolute;
+    border-radius: 8px;
+    padding: 6px 9px;
+    cursor: pointer;
+    overflow: hidden;
+    opacity: 0.93;
+    transition: opacity 0.15s, box-shadow 0.15s, z-index 0s;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 3px;
+    box-sizing: border-box;
+    border: 1.5px solid rgba(255,255,255,0.25);
+}
+
+.cal-bloque:hover {
+    opacity: 1;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+    z-index: 10;
+}
+
+.blq-nombre {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.35;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+
+.blq-hora {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.95);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.blq-inst {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.6875rem;
+    color: rgba(255,255,255,0.85);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── Adaptación por tamaño de bloque ──────────────────────── */
+
+/*
+   blq-sm (~1 h, 80-149 px):
+   Nombre 2 líneas + instructor visible.
+*/
+.blq-sm .blq-nombre {
+    -webkit-line-clamp: 2;
+}
+
+/*
+   blq-xs (< 80 px):
+   Padding reducido, nombre 1 línea, sin instructor
+*/
+.blq-xs {
+    padding: 4px 7px;
+    gap: 2px;
+}
+
+.blq-xs .blq-nombre {
+    font-size: 0.75rem;
+    -webkit-line-clamp: 1;
+}
+
+.blq-xs .blq-hora {
+    font-size: 0.6875rem;
+}
+
+.blq-xs .blq-inst {
+    display: none;
+}
+
+/* Leyenda de competencias */
+.cal-leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 6px;
+}
+
+.leyenda-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    color: #64748B;
+}
+
+.leyenda-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   VISTA DE LISTA — Gestión
+══════════════════════════════════════════════════════════════ */
+.tabla-lista {
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.tabla-lista-head {
+    display: grid;
+    grid-template-columns: 170px 1fr 130px 110px 100px 100px 110px;
+    padding: 10px 16px;
+    background: #F8FAFC;
+    border-bottom: 1.5px solid #E2E8F0;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    gap: 8px;
+}
+
+.tabla-lista-fila {
+    display: grid;
+    grid-template-columns: 170px 1fr 130px 110px 100px 100px 110px;
+    padding: 13px 16px;
+    border-bottom: 1px solid #F1F5F9;
+    gap: 8px;
+    align-items: center;
+    font-family: 'Poppins', sans-serif;
+    transition: background 0.12s;
+}
+
+.tabla-lista-fila:last-child { border-bottom: none; }
+.tabla-lista-fila:hover { background: #FAFBFF; }
+
+.col-comp {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.comp-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.col-resultado {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #1E293B;
+    line-height: 1.4;
+}
+
+.col-inst {
+    font-size: 0.75rem;
+    color: #64748B;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.col-periodo {
+    font-size: 0.75rem;
+    color: #64748B;
+    font-variant-numeric: tabular-nums;
+}
+
+.col-horario {
+    font-size: 0.75rem;
+    color: #64748B;
+    font-variant-numeric: tabular-nums;
+}
+
+.col-estado { /* wraps badge */ }
+
+.badge-estado {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 99px;
+}
+
+.badge-programado { background: #DBEAFE; color: #1E40AF; }
+.badge-completado { background: #D1FAE5; color: #065F46; }
+
+.col-accion {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-gestionar {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #F0F0FF;
+    color: #4F46E5;
+    border: 1.5px solid #C7D2FE;
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.btn-gestionar:hover {
+    background: #E0E7FF;
+    border-color: #818CF8;
+}
+
+/* ── Responsivo ────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    .contenedor-principal { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+    .tabla-lista-head,
+    .tabla-lista-fila {
+        grid-template-columns: 1fr 100px;
+    }
+
+    .tabla-lista-head span:nth-child(n+3),
+    .tabla-lista-fila .col-inst,
+    .tabla-lista-fila .col-periodo,
+    .tabla-lista-fila .col-horario,
+    .tabla-lista-fila .col-estado {
+        display: none;
+    }
+}

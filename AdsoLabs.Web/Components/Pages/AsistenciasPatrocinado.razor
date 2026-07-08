@@ -1,0 +1,458 @@
+@page "/asistencias-patrocinados"
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@using AdsoLabs.Application.DTOs.Patrocinio
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@inject PatrocinioApiService PatrocinioApi
+@inject SesionService Sesion
+
+@* ── Modal de detalle ── *@
+@if (modalAbierto && seleccionado is not null)
+{
+    <div class="modal-overlay" @onclick="CerrarModal">
+        <div class="modal-detalle" @onclick:stopPropagation="true">
+
+            <div class="md-header">
+                <div class="md-identidad">
+                    <div class="md-avatar @(EsEnRiesgo(seleccionado) ? "avatar-riesgo" : "")">
+                        @Iniciales(seleccionado.NombreAprendiz)
+                    </div>
+                    <div>
+                        <strong>@seleccionado.NombreAprendiz</strong>
+                        <span>@seleccionado.NumeroDocumento</span>
+                    </div>
+                    @if (EsEnRiesgo(seleccionado))
+                    {
+                        <span class="badge-riesgo-sm">
+                            <i class="bi bi-exclamation-triangle-fill"></i> En riesgo
+                        </span>
+                    }
+                </div>
+                <button class="btn-x" @onclick="CerrarModal"><i class="bi bi-x-lg"></i></button>
+            </div>
+
+            <div class="md-infobar">
+                <div class="md-info-item">
+                    <span class="mdi-label">Empresa</span>
+                    <span class="mdi-valor">@(seleccionado.NombreEmpresa ?? "—")</span>
+                </div>
+                <div class="md-info-item">
+                    <span class="mdi-label">Etapa</span>
+                    <span class="etapa-badge @(seleccionado.Etapa == "Lectiva" ? "lectiva" : "productiva")">
+                        @seleccionado.Etapa
+                    </span>
+                </div>
+                <div class="md-info-item">
+                    <span class="mdi-label">Ficha</span>
+                    <span class="mdi-valor">@seleccionado.NumeroFicha</span>
+                </div>
+                <div class="md-info-item">
+                    <span class="mdi-label">Horario asignado</span>
+                    <span class="mdi-valor @(seleccionado.HoraInicio.HasValue ? "val-horario" : "val-sin")">
+                        @(seleccionado.HoraInicio.HasValue
+                            ? $"{seleccionado.HoraInicio:HH\\:mm} – {seleccionado.HoraFin:HH\\:mm}"
+                            : "Sin asignar")
+                    </span>
+                </div>
+            </div>
+
+            <div class="md-body">
+
+                @* ── Columna izquierda: asistencia académica ── *@
+                <div class="md-col-asistencia">
+                    <h4><i class="bi bi-calendar-check"></i> Asistencia académica</h4>
+
+                    @if (cargandoResumen)
+                    {
+                        <div class="carga-inline">
+                            <span class="spinner-border spinner-border-sm"></span> Cargando...
+                        </div>
+                    }
+                    else if (resumen is null)
+                    {
+                        <p class="sin-dato">No se pudieron cargar los datos.</p>
+                    }
+                    else if (resumen.TotalSesiones == 0)
+                    {
+                        <p class="sin-dato">Sin sesiones académicas registradas aún.</p>
+                    }
+                    else
+                    {
+                        <div class="resumen-barra">
+                            <div class="res-barra-outer">
+                                <div class="res-barra-inner @(EsEnRiesgoResumen(resumen) ? "barra-riesgo" : "barra-ok")"
+                                     style="width:@resumen.PorcentajeAsistencia%">
+                                </div>
+                            </div>
+                            <span class="res-pct @(EsEnRiesgoResumen(resumen) ? "pct-riesgo" : "pct-ok")">
+                                @resumen.PorcentajeAsistencia%
+                            </span>
+                        </div>
+
+                        <div class="res-stats">
+                            <div class="stat-item">
+                                <span class="stat-num">@resumen.TotalSesiones</span>
+                                <span class="stat-lbl">Total sesiones</span>
+                            </div>
+                            <div class="stat-item presente">
+                                <span class="stat-num">@resumen.Presentes</span>
+                                <span class="stat-lbl">Presentes</span>
+                            </div>
+                            @if (resumen.Justificados > 0)
+                            {
+                                <div class="stat-item justificado">
+                                    <span class="stat-num">@resumen.Justificados</span>
+                                    <span class="stat-lbl">Justificados</span>
+                                </div>
+                            }
+                            <div class="stat-item ausente">
+                                <span class="stat-num">@resumen.Ausentes</span>
+                                <span class="stat-lbl">Ausentes</span>
+                            </div>
+                        </div>
+
+                        <a class="link-asistencias" href="asistencias">
+                            <i class="bi bi-box-arrow-up-right"></i> Ver detalle en Asistencias
+                        </a>
+                    }
+                </div>
+
+                @* ── Columna derecha: asignar horario ── *@
+                <div class="md-col-horario">
+                    <h4><i class="bi bi-clock"></i> Horario de patrocinio</h4>
+
+                    <p class="horario-desc">
+                        Asigna el horario en el que el aprendiz debe asistir.
+                        Para aprendices en etapa lectiva, debe ser en jornada contraria a la de formación.
+                    </p>
+
+                    @if (!string.IsNullOrEmpty(msgError))
+                    {
+                        <div class="alerta error"><i class="bi bi-exclamation-circle"></i> @msgError</div>
+                    }
+                    @if (!string.IsNullOrEmpty(msgExito))
+                    {
+                        <div class="alerta exito"><i class="bi bi-check-circle"></i> @msgExito</div>
+                    }
+
+                    <div class="form-campo">
+                        <label>Hora inicio</label>
+                        <input type="time" @bind="horaInicio" />
+                    </div>
+                    <div class="form-campo">
+                        <label>Hora fin</label>
+                        <input type="time" @bind="horaFin" />
+                    </div>
+
+                    <div class="horario-footer">
+                        <button class="btn-primario" @onclick="GuardarHorario" disabled="@guardando">
+                            @(guardando ? "Guardando…" : "Guardar horario")
+                        </button>
+                        @if (seleccionado?.HoraInicio.HasValue == true)
+                        {
+                            <button class="btn-secundario-danger" @onclick="EliminarHorario" disabled="@guardando">
+                                <i class="bi bi-trash"></i> Eliminar horario
+                            </button>
+                        }
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
+
+<section class="patrocinados">
+    <div class="page-head">
+        <div>
+            <h1>Patrocinados</h1>
+            <p class="patrocinados-subtitulo">Seguimiento de asistencia de aprendices en etapa de patrocinio.</p>
+        </div>
+    </div>
+
+    <div class="contenedor">
+        <div class="filtros">
+            <div class="campo-sel">
+                <i class="bi bi-journal-bookmark"></i>
+                <label>Ficha</label>
+                <select @bind="filtroFicha">
+                    <option value="">Todas</option>
+                    @foreach (var f in fichasDisponibles)
+                    {
+                        <option value="@f">@f</option>
+                    }
+                </select>
+            </div>
+            <div class="campo-sel">
+                <i class="bi bi-briefcase"></i>
+                <label>Etapa</label>
+                <select @bind="filtroEtapa">
+                    <option value="">Todas</option>
+                    <option value="Lectiva">Lectiva</option>
+                    <option value="Productiva">Productiva</option>
+                </select>
+            </div>
+            <div class="campo-busq">
+                <i class="bi bi-search"></i>
+                <input placeholder="Buscar aprendiz o empresa…"
+                       @bind="busqueda" @bind:event="oninput" />
+            </div>
+        </div>
+
+        <div class="kpis">
+            <div class="kpi">
+                <span class="kpi-num">@total</span>
+                <span class="kpi-lbl">Total patrocinados</span>
+            </div>
+            <div class="kpi kpi-riesgo">
+                <span class="kpi-num">@enRiesgo</span>
+                <span class="kpi-lbl">En riesgo (&lt;70%)</span>
+            </div>
+            <div class="kpi kpi-sin-horario">
+                <span class="kpi-num">@sinHorario</span>
+                <span class="kpi-lbl">Sin horario asignado</span>
+            </div>
+        </div>
+
+        @if (cargando)
+        {
+            <div class="estado-carga">
+                <span class="spinner-border spinner-border-sm"></span> Cargando…
+            </div>
+        }
+        else if (!filtrados.Any())
+        {
+            <div class="estado-vacio">No hay patrocinados activos con los filtros seleccionados.</div>
+        }
+        else
+        {
+            <div class="grid-patrocinados">
+                @foreach (var p in paginaActual_items)
+                {
+                    var riesgo     = EsEnRiesgo(p);
+                    var tieneHora  = p.HoraInicio.HasValue;
+                    <div class="card-patrocinado @(riesgo ? "card-riesgo" : "")"
+                         @onclick="() => AbrirModal(p)">
+                        <div class="card-top">
+                            <div class="card-avatar @(riesgo ? "avatar-riesgo" : "")">
+                                @Iniciales(p.NombreAprendiz)
+                            </div>
+                            <div class="card-info">
+                                <strong>@p.NombreAprendiz</strong>
+                                <span>@p.NumeroDocumento</span>
+                            </div>
+                            @if (riesgo)
+                            {
+                                <span class="badge-riesgo">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> En riesgo
+                                </span>
+                            }
+                        </div>
+
+                        <div class="card-meta">
+                            <span class="meta-item">
+                                <i class="bi bi-building"></i> @(p.NombreEmpresa ?? "Sin empresa")
+                            </span>
+                            <span class="meta-item">
+                                <i class="bi bi-layers"></i> Ficha @p.NumeroFicha
+                            </span>
+                            <span class="etapa-badge @(p.Etapa == "Lectiva" ? "lectiva" : "productiva")">
+                                @p.Etapa
+                            </span>
+                        </div>
+
+                        <div class="card-asistencia">
+                            <div class="barra-wrap">
+                                <div class="barra-fill @(riesgo ? "barra-riesgo" : "barra-ok")"
+                                     style="width:@p.PorcentajeAsistencia%">
+                                </div>
+                            </div>
+                            <span class="pct @(riesgo ? "pct-riesgo" : "pct-ok")">
+                                @(p.PorcentajeAsistencia > 0 ? $"{p.PorcentajeAsistencia}%" : "Sin datos")
+                            </span>
+                        </div>
+
+                        <div class="card-horario @(tieneHora ? "horario-ok" : "horario-falta")">
+                            <i class="bi @(tieneHora ? "bi-clock-fill" : "bi-clock")"></i>
+                            @(tieneHora
+                                ? $"{p.HoraInicio:HH\\:mm} – {p.HoraFin:HH\\:mm}"
+                                : "Sin horario asignado")
+                        </div>
+
+                        <button class="btn-detalle" @onclick:stopPropagation="true"
+                                @onclick="() => AbrirModal(p)">
+                            Ver detalle <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <div class="paginacion">
+                <span class="pag-info">
+                    @inicioReg–@finReg de @filtrados.Count() patrocinados
+                </span>
+                <div class="pag-controles">
+                    <button class="btn-pag" @onclick="PagAnterior" disabled="@(pagina == 1)">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <span>@pagina / @totalPaginas</span>
+                    <button class="btn-pag" @onclick="PagSiguiente"
+                            disabled="@(pagina >= totalPaginas)">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    // ── Estado ────────────────────────────────────────────────
+    bool cargando        = true;
+    bool modalAbierto;
+    bool cargandoResumen;
+    bool guardando;
+    string busqueda     = string.Empty;
+    string filtroFicha  = string.Empty;
+    string filtroEtapa  = string.Empty;
+    string msgError     = string.Empty;
+    string msgExito     = string.Empty;
+
+    // ── Datos ─────────────────────────────────────────────────
+    List<PatrocinioDTO>    patrocinios = [];
+    PatrocinioDTO?         seleccionado;
+    ResumenAsistenciaDTO?  resumen;
+
+    // ── Formulario horario ────────────────────────────────────
+    TimeOnly? horaInicio;
+    TimeOnly? horaFin;
+
+    // ── Paginación ────────────────────────────────────────────
+    int pagina    = 1;
+    const int PorPagina = 8;
+
+    // ── Computed ──────────────────────────────────────────────
+    IEnumerable<string> fichasDisponibles =>
+        patrocinios.Select(p => p.NumeroFicha).Distinct().OrderBy(f => f);
+
+    IEnumerable<PatrocinioDTO> filtrados => patrocinios.Where(p =>
+        p.Activo &&
+        (string.IsNullOrEmpty(filtroFicha) || p.NumeroFicha == filtroFicha) &&
+        (string.IsNullOrEmpty(filtroEtapa) || p.Etapa       == filtroEtapa) &&
+        (string.IsNullOrEmpty(busqueda)
+            || p.NombreAprendiz.Contains(busqueda, StringComparison.OrdinalIgnoreCase)
+            || (p.NombreEmpresa ?? "").Contains(busqueda, StringComparison.OrdinalIgnoreCase)));
+
+    IEnumerable<PatrocinioDTO> paginaActual_items =>
+        filtrados.Skip((pagina - 1) * PorPagina).Take(PorPagina);
+
+    int totalPaginas => Math.Max(1, (int)Math.Ceiling((double)filtrados.Count() / PorPagina));
+    int inicioReg    => filtrados.Any() ? (pagina - 1) * PorPagina + 1 : 0;
+    int finReg       => Math.Min(pagina * PorPagina, filtrados.Count());
+
+    int total       => patrocinios.Count(p => p.Activo);
+    int enRiesgo    => filtrados.Count(EsEnRiesgo);
+    int sinHorario  => filtrados.Count(p => !p.HoraInicio.HasValue);
+
+    static bool EsEnRiesgo(PatrocinioDTO p)          => p.PorcentajeAsistencia is > 0 and < 70;
+    static bool EsEnRiesgoResumen(ResumenAsistenciaDTO r) => r.PorcentajeAsistencia is > 0 and < 70;
+
+    static string Iniciales(string nombre)
+    {
+        var partes = nombre.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return partes.Length >= 2
+            ? $"{partes[0][0]}{partes[1][0]}".ToUpper()
+            : nombre.Length > 0 ? nombre[0].ToString().ToUpper() : "?";
+    }
+
+    // ── Ciclo de vida ─────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        patrocinios = await PatrocinioApi.ObtenerPatrociniosAsync(Sesion.IdUsuario);
+        cargando    = false;
+    }
+
+    // ── Paginación ────────────────────────────────────────────
+    void PagAnterior() { if (pagina > 1) pagina--; }
+    void PagSiguiente() { if (pagina < totalPaginas) pagina++; }
+
+    // ── Modal ─────────────────────────────────────────────────
+    async Task AbrirModal(PatrocinioDTO p)
+    {
+        seleccionado = p;
+        modalAbierto = true;
+        msgError     = string.Empty;
+        msgExito     = string.Empty;
+        horaInicio   = p.HoraInicio;
+        horaFin      = p.HoraFin;
+
+        cargandoResumen = true;
+        resumen = await PatrocinioApi.ObtenerResumenAsistenciaAsync(p.IdAprendiz, p.IdFicha);
+        cargandoResumen = false;
+    }
+
+    void CerrarModal()
+    {
+        modalAbierto = false;
+        seleccionado = null;
+        resumen      = null;
+    }
+
+    async Task GuardarHorario()
+    {
+        if (seleccionado is null) return;
+        guardando = true;
+        msgError  = string.Empty;
+        msgExito  = string.Empty;
+
+        var (ok, msg) = await PatrocinioApi.AsignarHorarioAsync(new AsignarHorarioCommand
+        {
+            IdPatrocinio = seleccionado.IdPatrocinio,
+            HoraInicio   = horaInicio,
+            HoraFin      = horaFin
+        });
+
+        guardando = false;
+
+        if (ok)
+        {
+            msgExito = "Horario asignado correctamente.";
+            patrocinios = await PatrocinioApi.ObtenerPatrociniosAsync(Sesion.IdUsuario);
+            // Actualizar la tarjeta en memoria para que el badge se actualice
+            seleccionado = patrocinios.FirstOrDefault(p => p.IdPatrocinio == seleccionado.IdPatrocinio)
+                           ?? seleccionado;
+        }
+        else
+        {
+            msgError = msg;
+        }
+    }
+
+    async Task EliminarHorario()
+    {
+        if (seleccionado is null) return;
+        guardando = true;
+        msgError  = string.Empty;
+        msgExito  = string.Empty;
+
+        var (ok, msg) = await PatrocinioApi.EliminarHorarioAsync(seleccionado.IdPatrocinio);
+
+        guardando = false;
+
+        if (ok)
+        {
+            msgExito    = "Horario eliminado correctamente.";
+            horaInicio  = null;
+            horaFin     = null;
+            patrocinios = await PatrocinioApi.ObtenerPatrociniosAsync(Sesion.IdUsuario);
+            seleccionado = patrocinios.FirstOrDefault(p => p.IdPatrocinio == seleccionado.IdPatrocinio)
+                           ?? seleccionado;
+        }
+        else
+        {
+            msgError = msg;
+        }
+    }
+}

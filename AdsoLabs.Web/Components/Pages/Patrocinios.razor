@@ -1,0 +1,474 @@
+@page "/patrocinios"
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@using AdsoLabs.Application.DTOs.Fichas
+@using AdsoLabs.Application.DTOs.Patrocinio
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@inject PatrocinioApiService PatrocinioApi
+@inject FichaApiService FichaApi
+@inject SesionService Sesion
+
+@* ── Modal: Agregar / Editar patrocinio ── *@
+@if (mostrarFormulario)
+{
+    <div class="modal-overlay" @onclick="CerrarFormulario">
+        <div class="modal-box" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <div class="modal-titulo">
+                    <i class="bi bi-briefcase"></i>
+                    <span>@(editando ? "Editar patrocinio" : "Nuevo patrocinio")</span>
+                </div>
+                <button class="btn-cerrar-modal" @onclick="CerrarFormulario">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+
+                @if (!string.IsNullOrEmpty(errorFormulario))
+                {
+                    <div class="alert alert-danger">@errorFormulario</div>
+                }
+
+                @if (!editando)
+                {
+                    <div class="campo-form">
+                        <label>Ficha</label>
+                        <select @bind="fichaFormSeleccionada" @bind:after="CargarAprendicesPorFicha">
+                            <option value="">Seleccione una ficha</option>
+                            @foreach (var f in fichasForm)
+                            {
+                                <option value="@f.NumeroFicha">@f.NumeroFicha</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="campo-form">
+                        <label>Aprendiz</label>
+                        <select @bind="aprendizFormSeleccionado" disabled="@(string.IsNullOrEmpty(fichaFormSeleccionada))">
+                            <option value="0">@(string.IsNullOrEmpty(fichaFormSeleccionada) ? "Seleccione primero una ficha" : "Seleccione un aprendiz")</option>
+                            @foreach (var a in aprendicesForm)
+                            {
+                                <option value="@a.IdAprendiz">@a.Nombres — @a.NumeroDocumento</option>
+                            }
+                        </select>
+                    </div>
+                }
+
+                <div class="campo-form">
+                    <label>Etapa</label>
+                    <select @bind="form.Etapa">
+                        <option value="Lectiva">Lectiva</option>
+                        <option value="Productiva">Productiva</option>
+                    </select>
+                </div>
+
+                <div class="campo-form">
+                    <label>Empresa</label>
+                    <input @bind="form.NombreEmpresa" placeholder="Nombre de la empresa" />
+                </div>
+
+                <div class="campo-form">
+                    <label>Contacto empresa</label>
+                    <input @bind="form.ContactoEmpresa" placeholder="Nombre o correo de contacto" />
+                </div>
+
+                <div class="campo-form-fila">
+                    <div class="campo-form">
+                        <label>Fecha inicio</label>
+                        <input type="date" @bind="fechaInicio" />
+                    </div>
+                    <div class="campo-form">
+                        <label>Fecha fin</label>
+                        <input type="date" @bind="fechaFin" />
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" @onclick="CerrarFormulario">Cancelar</button>
+                <button class="btn-guardar" @onclick="GuardarPatrocinio" disabled="@guardando">
+                    @(guardando ? "Guardando..." : "Guardar")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Modal: Confirmación desactivar ── *@
+@if (mostrarConfirmacion && patronSeleccionado is not null)
+{
+    <div class="modal-overlay" @onclick="CerrarConfirmacion">
+        <div class="modal-confirm" @onclick:stopPropagation="true">
+            <i class="bi bi-exclamation-triangle-fill icono-alerta"></i>
+            <h4>¿Desactivar patrocinio?</h4>
+            <p>Se desactivará el patrocinio de <strong>@patronSeleccionado.NombreAprendiz</strong> en la ficha @patronSeleccionado.NumeroFicha. Esta acción se puede revertir desde la edición.</p>
+            <div class="confirm-botones">
+                <button class="btn-cancelar" @onclick="CerrarConfirmacion">Cancelar</button>
+                <button class="btn-desactivar" @onclick="ConfirmarDesactivar">Desactivar</button>
+            </div>
+        </div>
+    </div>
+}
+
+<section class="patrocinios">
+
+    <h1>Patrocinios</h1>
+    <p class="patrocinios-subtitulo">Gestión de etapas de patrocinio lectivo y productivo de los aprendices.</p>
+
+    @if (!string.IsNullOrEmpty(mensajeExito))
+    {
+        <div class="alert alert-success">@mensajeExito</div>
+    }
+
+    <div class="contenedor-patrocinios">
+
+        @* ── Filtros ── *@
+        <div class="filtro">
+            <div class="campo-select">
+                <label>Ficha</label>
+                <select @bind="fichaFiltro">
+                    <option value="">Todas</option>
+                    @foreach (var f in fichasDisponibles)
+                    {
+                        <option value="@f">@f</option>
+                    }
+                </select>
+            </div>
+            <div class="campo-select">
+                <label>Etapa</label>
+                <select @bind="etapaFiltro">
+                    <option value="">Todas</option>
+                    <option value="Lectiva">Lectiva</option>
+                    <option value="Productiva">Productiva</option>
+                </select>
+            </div>
+            <div class="campo-select">
+                <label>Estado</label>
+                <select @bind="estadoFiltro">
+                    <option value="">Todos</option>
+                    <option value="activo">Activos</option>
+                    <option value="inactivo">Inactivos</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="filtros-busqueda">
+            <div class="campo-busqueda">
+                <i class="bi bi-search"></i>
+                <input placeholder="Buscar aprendiz o empresa..." @bind="busqueda" @bind:event="oninput" />
+            </div>
+            @if (Sesion.EsAdministrador)
+            {
+                <button class="btn-nuevo" @onclick="AbrirFormularioNuevo">
+                    <i class="bi bi-plus-circle"></i> Nuevo patrocinio
+                </button>
+            }
+        </div>
+
+        @* ── Contenido ── *@
+        @if (cargando)
+        {
+            <div class="fila-vacia">
+                <span class="spinner-border spinner-border-sm me-2"></span> Cargando...
+            </div>
+        }
+        else if (!patrociniosFiltrados.Any())
+        {
+            <div class="fila-vacia">
+                <i class="bi bi-inbox me-2"></i>
+                No hay patrocinios registrados
+            </div>
+        }
+        else
+        {
+            <div class="tabla-patrocinios @(Sesion.EsAdministrador ? "con-acciones" : "")">
+                <div class="header-tabla">
+                    <span>Aprendiz</span>
+                    <span>Ficha</span>
+                    <span>Etapa</span>
+                    <span>Empresa</span>
+                    <span>Asistencia</span>
+                    <span>Estado</span>
+                    @if (Sesion.EsAdministrador)
+                    {
+                        <span>Acciones</span>
+                    }
+                </div>
+
+                @foreach (var p in patrociniosPaginados)
+                {
+                    <div class="fila">
+                        <div class="nombre">
+                            <div class="avatar-mini">@Iniciales(p.NombreAprendiz)</div>
+                            <div class="nombre-info">
+                                <span class="nombre-texto">@p.NombreAprendiz</span>
+                                <span class="nombre-sub">@p.NumeroDocumento</span>
+                            </div>
+                        </div>
+                        <span class="ficha">@p.NumeroFicha</span>
+                        <span class="badge-etapa @p.Etapa.ToLower()">@p.Etapa</span>
+                        <div class="col-empresa">
+                            <span>@(p.NombreEmpresa ?? "—")</span>
+                            @if (!string.IsNullOrEmpty(p.ContactoEmpresa))
+                            {
+                                <span class="contacto">@p.ContactoEmpresa</span>
+                            }
+                        </div>
+                        <div class="col-asistencia">
+                            <div class="barra-progreso">
+                                <div class="barra-fill @(p.PorcentajeAsistencia < 70 ? "barra-riesgo" : "")"
+                                     style="width: @p.PorcentajeAsistencia%"></div>
+                            </div>
+                            <span class="@(p.PorcentajeAsistencia < 70 ? "pct-riesgo" : "pct-ok")">
+                                @p.PorcentajeAsistencia%
+                            </span>
+                        </div>
+                        <span class="badge-estado @(p.Activo ? "activo" : "inactivo")">
+                            @(p.Activo ? "Activo" : "Inactivo")
+                        </span>
+                        @if (Sesion.EsAdministrador)
+                        {
+                            <div class="acciones">
+                                <button class="btn-accion editar" title="Editar"
+                                        @onclick="() => AbrirFormularioEditar(p)">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                @if (p.Activo)
+                                {
+                                    <button class="btn-accion desactivar" title="Desactivar"
+                                            @onclick="() => SolicitarDesactivar(p)">
+                                        <i class="bi bi-toggle-on"></i>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="paginacion">
+                <span class="info-registros">
+                    @inicioRegistro – @finRegistro de @patrociniosFiltrados.Count() registros
+                </span>
+                <div class="grupo-paginacion">
+                    <button class="btn-pag" @onclick="PaginaAnterior" disabled="@(paginaActual == 1)">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <span class="pagina-info">Página @paginaActual de @totalPaginas</span>
+                    <button class="btn-pag" @onclick="PaginaSiguiente" disabled="@(paginaActual == totalPaginas)">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        }
+
+    </div>
+</section>
+
+@code {
+    // ── Estado de pantalla ──────────────────────────────────────────────────
+    bool cargando = true;
+    bool mostrarFormulario;
+    bool mostrarConfirmacion;
+    bool editando;
+    bool guardando;
+    string busqueda = string.Empty;
+    string fichaFiltro = string.Empty;
+    string etapaFiltro = string.Empty;
+    string estadoFiltro = "activo";
+    string errorFormulario = string.Empty;
+    string mensajeExito = string.Empty;
+
+    // ── Datos ───────────────────────────────────────────────────────────────
+    List<PatrocinioDTO> patrocinios = [];
+    PatrocinioDTO? patronSeleccionado;
+
+    // ── Formulario ──────────────────────────────────────────────────────────
+    AgregarPatrocinioCommand form = new();
+    ActualizarPatrocinioCommand formEditar = new();
+    DateTime? fechaInicio;
+    DateTime? fechaFin;
+
+    // Selectores del formulario de nuevo patrocinio
+    List<FichaDTO> fichasForm = [];
+    List<AprendizFichaDTO> aprendicesForm = [];
+    string fichaFormSeleccionada = string.Empty;
+    int aprendizFormSeleccionado;
+
+    // ── Paginación ──────────────────────────────────────────────────────────
+    int paginaActual = 1;
+    const int RegistrosPorPagina = 8;
+
+    IEnumerable<PatrocinioDTO> patrociniosFiltrados => patrocinios
+        .Where(p => (string.IsNullOrEmpty(fichaFiltro) || p.NumeroFicha == fichaFiltro)
+                 && (string.IsNullOrEmpty(etapaFiltro) || p.Etapa == etapaFiltro)
+                 && (string.IsNullOrEmpty(estadoFiltro)
+                     || (estadoFiltro == "activo" && p.Activo)
+                     || (estadoFiltro == "inactivo" && !p.Activo))
+                 && (string.IsNullOrEmpty(busqueda)
+                     || p.NombreAprendiz.Contains(busqueda, StringComparison.OrdinalIgnoreCase)
+                     || p.NumeroDocumento.Contains(busqueda, StringComparison.OrdinalIgnoreCase)));
+
+    IEnumerable<PatrocinioDTO> patrociniosPaginados =>
+        patrociniosFiltrados.Skip((paginaActual - 1) * RegistrosPorPagina).Take(RegistrosPorPagina);
+
+    IEnumerable<string> fichasDisponibles =>
+        patrocinios.Select(p => p.NumeroFicha).Distinct().OrderBy(f => f);
+
+    int totalPaginas => Math.Max(1, (int)Math.Ceiling((double)patrociniosFiltrados.Count() / RegistrosPorPagina));
+    int inicioRegistro => (paginaActual - 1) * RegistrosPorPagina + 1;
+    int finRegistro => Math.Min(paginaActual * RegistrosPorPagina, patrociniosFiltrados.Count());
+
+    // ── Ciclo de vida ───────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        var tareaPatrocinios = CargarPatrocinios();
+        var tareaFichas = FichaApi.ObtenerFichasAsync();
+        await Task.WhenAll(tareaPatrocinios, tareaFichas);
+        fichasForm = await tareaFichas;
+    }
+
+    async Task CargarPatrocinios()
+    {
+        cargando = true;
+        patrocinios = await PatrocinioApi.ObtenerPatrociniosAsync(Sesion.IdUsuario);
+        cargando = false;
+    }
+
+    async Task CargarAprendicesPorFicha()
+    {
+        aprendizFormSeleccionado = 0;
+        aprendicesForm = [];
+        if (string.IsNullOrEmpty(fichaFormSeleccionada)) return;
+
+        var ficha = fichasForm.FirstOrDefault(f => f.NumeroFicha == fichaFormSeleccionada);
+        if (ficha is null) return;
+
+        form.IdFicha = ficha.IdFicha;
+
+        aprendicesForm = await FichaApi.ObtenerAprendicesAsync(fichaFormSeleccionada);
+    }
+
+    // ── Paginación ──────────────────────────────────────────────────────────
+    void PaginaAnterior() { if (paginaActual > 1) paginaActual--; }
+    void PaginaSiguiente() { if (paginaActual < totalPaginas) paginaActual++; }
+
+    // ── Formulario Nuevo ────────────────────────────────────────────────────
+    void AbrirFormularioNuevo()
+    {
+        editando = false;
+        form = new AgregarPatrocinioCommand { Etapa = "Lectiva" };
+        fichaFormSeleccionada = string.Empty;
+        aprendizFormSeleccionado = 0;
+        aprendicesForm = [];
+        fechaInicio = null;
+        fechaFin = null;
+        errorFormulario = string.Empty;
+        mostrarFormulario = true;
+    }
+
+    void AbrirFormularioEditar(PatrocinioDTO p)
+    {
+        editando = true;
+        patronSeleccionado = p;
+        formEditar = new ActualizarPatrocinioCommand
+        {
+            IdPatrocinio    = p.IdPatrocinio,
+            Etapa           = p.Etapa,
+            Activo          = p.Activo,
+            NombreEmpresa   = p.NombreEmpresa,
+            ContactoEmpresa = p.ContactoEmpresa
+        };
+        form = new AgregarPatrocinioCommand { Etapa = p.Etapa, NombreEmpresa = p.NombreEmpresa, ContactoEmpresa = p.ContactoEmpresa };
+        fechaInicio = p.FechaInicioEtapa.HasValue ? p.FechaInicioEtapa.Value.ToDateTime(TimeOnly.MinValue) : null;
+        fechaFin = p.FechaFinEtapa.HasValue ? p.FechaFinEtapa.Value.ToDateTime(TimeOnly.MinValue) : null;
+        errorFormulario = string.Empty;
+        mostrarFormulario = true;
+    }
+
+    void CerrarFormulario()
+    {
+        mostrarFormulario = false;
+        errorFormulario = string.Empty;
+    }
+
+    async Task GuardarPatrocinio()
+    {
+        guardando = true;
+        errorFormulario = string.Empty;
+        mensajeExito = string.Empty;
+
+        DateOnly? fi = fechaInicio.HasValue ? DateOnly.FromDateTime(fechaInicio.Value) : null;
+        DateOnly? ff = fechaFin.HasValue ? DateOnly.FromDateTime(fechaFin.Value) : null;
+
+        bool ok;
+        string msg;
+
+        if (!editando)
+        {
+            if (aprendizFormSeleccionado == 0)
+            {
+                errorFormulario = "Debe seleccionar un aprendiz.";
+                guardando = false;
+                return;
+            }
+            form.IdAprendiz       = aprendizFormSeleccionado;
+            form.FechaInicioEtapa = fi;
+            form.FechaFinEtapa    = ff;
+            (ok, msg) = await PatrocinioApi.AgregarPatrocinioAsync(form);
+        }
+        else
+        {
+            formEditar.Etapa            = form.Etapa;
+            formEditar.NombreEmpresa    = form.NombreEmpresa;
+            formEditar.ContactoEmpresa  = form.ContactoEmpresa;
+            formEditar.FechaInicioEtapa = fi;
+            formEditar.FechaFinEtapa    = ff;
+            (ok, msg) = await PatrocinioApi.ActualizarPatrocinioAsync(formEditar);
+        }
+
+        guardando = false;
+
+        if (ok)
+        {
+            mostrarFormulario = false;
+            mensajeExito = editando ? "Patrocinio actualizado." : "Patrocinio registrado.";
+            await CargarPatrocinios();
+        }
+        else
+        {
+            errorFormulario = msg;
+        }
+    }
+
+    // ── Desactivar ──────────────────────────────────────────────────────────
+    void SolicitarDesactivar(PatrocinioDTO p)
+    {
+        patronSeleccionado = p;
+        mostrarConfirmacion = true;
+    }
+
+    void CerrarConfirmacion() => mostrarConfirmacion = false;
+
+    async Task ConfirmarDesactivar()
+    {
+        if (patronSeleccionado is null) return;
+        mostrarConfirmacion = false;
+        var (ok, msg) = await PatrocinioApi.DesactivarPatrocinioAsync(patronSeleccionado.IdPatrocinio);
+        if (ok)
+        {
+            mensajeExito = "Patrocinio desactivado.";
+            await CargarPatrocinios();
+        }
+    }
+
+    private static string Iniciales(string nombre)
+    {
+        var partes = nombre.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return partes.Length >= 2
+            ? $"{partes[0][0]}{partes[1][0]}".ToUpperInvariant()
+            : partes.Length == 1 ? partes[0][0].ToString().ToUpperInvariant()
+            : "?";
+    }
+}

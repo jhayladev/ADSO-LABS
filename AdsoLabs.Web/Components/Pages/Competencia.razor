@@ -1,0 +1,236 @@
+
+@page "/competencias"
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@using System.Diagnostics
+@using AdsoLabs.Application.DTOs.Competencia
+@using AdsoLabs.Application.DTOs.Fichas
+@using AdsoLabs.Application.DTOs.Instructor
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@rendermode InteractiveServer
+@inject NavigationManager nav
+@inject CompetenciaApiService CompetenciaApiService
+
+<!-- Section para cargar o agregar a los aprendices de ADSO -->
+<section class="competencias">
+	<h1>Gestion de Competencias</h1>
+	<p class="competencias-subtitulo">Catálogo de competencias y resultados de aprendizaje del programa.</p>
+
+	<div class="contenedor-competencias">
+		<h3>Filtrar Competencias</h3>
+
+		<!-- Todos los filtros disponibles en esdta pantalla -->
+		<div class="filtro">
+
+			<div class="campo-select">
+					<label>Competencia</label>
+					<select @bind="competenciaSeleccionada">
+						<option value="">Seleccione una competencia</option>
+						@foreach (var c in competencias)
+						{
+							<option value="@c.NombreCompetencia">@c.NombreCompetencia</option>
+						}
+					</select>
+				</div>
+
+			<!-- Button de filtrado para la busqueda del aprendiz por su nombre -->
+			<button @onclick="Filtrar">Buscar Competencia</button>
+		</div>
+
+		<!-- Datos de los estudiantes cargados al sistema -->
+		<div class="datos-competencias">
+			<div class="data total">
+				<h1>Total Competencias</h1>
+				<h2>@fichaCompetencia.TotalCompetencias</h2>
+			</div>
+			<div class="data activos">
+				<h1>Competencias Activas</h1>
+				<h2>@fichaCompetencia.CompetenciasActivas</h2>
+			</div>
+			<div class="data riesgos">
+				<h1>Competencias Clausuradas</h1>
+				<h2>@fichaCompetencia.CompetenciasClausuradas</h2>
+			</div>
+		</div>
+		<div class="title-medium">
+			<h6>Resultados de la competencia</h6>
+			<div class="info-competencias">
+				@if (string.IsNullOrEmpty(fichaCompetencia.NombreCompetencia))
+				{
+					<h4>Sin seleccion</h4>
+
+				}
+				else
+				{
+
+					<h4>@fichaCompetencia.NombreCompetencia</h4>
+
+				}
+				<div class="num-ficha">
+
+					@if(string.IsNullOrEmpty(fichaCompetencia.CodigoCompetencia))
+					{
+						<h5>Sin seleccion</h5>
+
+					} else
+					{
+
+						<h5>@fichaCompetencia.CodigoCompetencia</h5>
+
+					}
+
+
+				</div>
+			</div>
+		</div>
+		<div class="contenedor">
+
+			<!-- Instructores -->
+			<div class="card instructores">
+
+				<div class="card-header">
+					<i class="bi bi-people"></i>
+					<span>Instructores Asociados</span>
+				</div>
+
+				<div class="lista-instructores">
+
+					@if (!fichaCompetencia.Instructores.Any())
+					{
+						<div class="fila-vacia">
+							<span>No hay instructores asignados</span>
+						</div>
+					}
+					else
+					{
+						@foreach (var instructor in fichaCompetencia.Instructores)
+						{
+							<div class="instructor-item @(instructorFiltro == instructor.IdInstructor ? "instructor-seleccionado" : "")"
+								 @onclick="() => SeleccionarInstructor(instructor.IdInstructor)">
+								<div class="avatar">@Iniciales(instructor.Nombres)</div>
+								<div class="info">
+									<span class="nombre">@instructor.Nombres</span>
+									<span class="rol">@instructor.Competencias[0]</span>
+								</div>
+								<span class="ficha-count">@instructor.Fichas.Count ficha@(instructor.Fichas.Count != 1 ? "s" : "")</span>
+							</div>
+						}
+					}
+
+				</div>
+
+			</div>
+
+
+			<!-- Fichas -->
+			<div class="card fichas">
+
+				<div class="card-header">
+					<div class="titulo">
+						<i class="bi bi-journal-bookmark"></i>
+						<span>Fichas Asociadas</span>
+						@if (instructorFiltro.HasValue)
+						{
+							<span class="filtro-activo-label">
+								— @fichaCompetencia.Instructores.FirstOrDefault(i => i.IdInstructor == instructorFiltro)?.Nombres
+							</span>
+							<button class="btn-ver-todas" @onclick="() => instructorFiltro = null">Ver todas</button>
+						}
+						else
+						{
+							<small>(Viendo esta competencia)</small>
+						}
+					</div>
+
+					<span class="badge">
+						@FichasFiltradas.Count(f => f.EstadoCompetencia != "Vista") Fichas Activas
+					</span>
+				</div>
+
+				<div class="tabla">
+
+					<div class="tabla-header tabla-header-fichas">
+						<span>Ficha</span>
+						<span>Modalidad</span>
+						<span>Estado</span>
+					</div>
+
+					<div class="tabla-body">
+						@if (!FichasFiltradas.Any())
+						{
+							<div class="fila-vacia">
+								<span>@(instructorFiltro.HasValue ? "Este instructor no tiene fichas en esta competencia" : "No hay fichas registradas")</span>
+							</div>
+						}
+						else
+						{
+							@foreach (var ficha in FichasFiltradas)
+							{
+								<div class="fila-tabla fila-tabla-fichas @(ficha.EstadoCompetencia == "Vista" ? "fila-clausurada" : "")">
+									<span>@ficha.NumeroFicha</span>
+									<span>@ObtenerModalidad(ficha.Descripcion)</span>
+									<span class="estado-comp-badge estado-@ficha.EstadoCompetencia.ToLower().Replace(" ", "-")">
+										@(ficha.EstadoCompetencia == "Vista" ? "Clausurada" : ficha.EstadoCompetencia)
+									</span>
+								</div>
+							}
+						}
+					</div>
+
+				</div>
+
+			</div>
+
+		</div>
+	</div>
+
+</section>
+
+@code {
+
+	string competenciaSeleccionada = "";
+	int?   instructorFiltro        = null;
+
+	FichaCompetenciaDTO fichaCompetencia = new();
+	List<CompetenciaDTO> competencias = [];
+
+	IEnumerable<FichaCompetenciaItemDTO> FichasFiltradas =>
+		instructorFiltro.HasValue
+			? fichaCompetencia.Fichas.Where(f =>
+				fichaCompetencia.Instructores
+					.FirstOrDefault(i => i.IdInstructor == instructorFiltro)
+					?.Fichas.Contains(f.NumeroFicha) ?? false)
+			: fichaCompetencia.Fichas;
+
+	void SeleccionarInstructor(int id)
+	{
+		instructorFiltro = instructorFiltro == id ? null : id;
+	}
+
+	public string ObtenerModalidad(string? descripcion)
+	{
+		if (string.IsNullOrEmpty(descripcion)) return "";
+		return descripcion.Split('|')[0].Trim();
+	}
+
+	protected override async Task OnInitializedAsync()
+	{
+		competencias = await CompetenciaApiService.ObtenerCompetenciasAsync();
+	}
+
+	private async Task Filtrar()
+	{
+		instructorFiltro = null;
+		fichaCompetencia = await CompetenciaApiService.ObtenerDatosCompetenciaAsync(competenciaSeleccionada);
+		StateHasChanged();
+	}
+
+	private static string Iniciales(string nombre)
+	{
+		var partes = nombre.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		return partes.Length >= 2
+			? $"{partes[0][0]}{partes[1][0]}".ToUpperInvariant()
+			: partes.Length == 1 ? partes[0][0].ToString().ToUpperInvariant()
+			: "?";
+	}
+}

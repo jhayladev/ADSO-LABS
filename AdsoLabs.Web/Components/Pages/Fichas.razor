@@ -1,0 +1,1341 @@
+@page "/fichas/{numeroFicha}"
+@using AdsoLabs.Application.DTOs.Fichas
+@using AdsoLabs.Application.DTOs.Importacion
+@using AdsoLabs.Application.DTOs.Repositorio
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@using AdsoLabs.Application.DTOs
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@inject NavigationManager nav
+@inject FichaApiService FichaApiService
+@inject ProgramacionApiService ProgramacionApiService
+@inject ImportacionApiService ImportacionApiService
+@inject RepositorioApiService RepositorioApiService
+@inject SesionService SesionService
+@inject IJSRuntime JS
+<!-- Section para cargar o agregar a los aprendices de ADSO -->
+<section class="fichas">
+	<h1>Gestion de Fichas</h1>
+	<p class="fichas-subtitulo">Consulta y administra las fichas de formación activas del programa.</p>
+
+	<div class="contenedor-fichas">
+		<!-- Datos de los estudiantes cargados al sistema -->
+		<div class="datos-fichas">
+			<div class="data fichas">
+				<div class="grupo">
+					<h1>Ficha</h1>
+					<div class="icons">
+						<i class="bi bi-journal-bookmark"></i>
+					</div>
+				</div>
+
+				@if (ficha is null)
+				{
+					<h2>--</h2>
+				}
+				else
+				{
+					<h2>@numeroFicha</h2>
+				}
+
+			</div>
+			<div class="data horas">
+				<div class="grupo">
+					<h1>Duración</h1>
+					<div class="icons">
+						<i class="bi bi-clock"></i>
+					</div>
+				</div>
+
+				@if (ficha is null)
+				{
+					<h2>--</h2>
+				}
+				else
+				{
+					<h2>@ficha.Meses</h2>
+				}
+
+			</div>
+			<div class="data competencias">
+				<div class="grupo">
+					<h1>Competencias</h1>
+					<div class="icons">
+						<i class="bi bi-person-vcard"></i>
+					</div>
+				</div>
+
+				@if (ficha is null)
+				{
+					<h2>--</h2>
+				}
+				else
+				{
+					<h2>@($"{ficha.TotalCompetenciasVistas}/{ficha.TotalCompetencias}")</h2>
+				}
+
+			</div>
+		</div>
+		<div class="card-progreso">
+
+			<div class="stats">
+				<div class="item">
+					<i class="bi bi-people"></i>
+					@if (ficha is null)
+					{
+						<span><b>--</b></span>
+					}
+					else
+					{
+						<span><b>@ficha.TotalAprendices</b> Aprendices</span>
+					}
+
+				</div>
+
+				<div class="item">
+					<i class="bi bi-clock"></i>
+
+					@if (ficha is null)
+					{
+						<span><b>--</b></span>
+					}
+					else
+					{
+						<span><b>@($"{ficha.TotalHorasVistas}/{ficha.TotalHoras}")</b></span>
+					}
+
+				</div>
+
+				<div class="item">
+					<i class="bi bi-graph-up"></i>
+					@if (ficha is null)
+					{
+						<span><b>--</b></span>
+					}
+					else
+					{
+						<span><b>@($"{ficha.ProgresoGeneral}%")</b> Progreso General</span>
+					}
+
+				</div>
+
+				<div class="item">
+					<i class="bi bi-signpost-split"></i>
+					@if (ficha is null)
+					{
+						<span><b>--</b></span>
+					}
+					else
+					{
+						<span><b>@ficha.FaseActual</b> · Etapa @ficha.EtapaFormativa</span>
+					}
+
+				</div>
+			</div>
+
+			<div class="barra">
+				<div class="progreso" style="@($"width:{ficha?.ProgresoGeneral ?? 0}%")"></div>
+			</div>
+
+			<div class="fechas">
+				<span>@(ficha?.FechaInicio.ToString("dd/MM/yyyy") ?? "--")</span>
+				<span>@(ficha?.FechaFin.ToString("dd/MM/yyyy") ?? "--")</span>
+			</div>
+
+		</div>
+		<div class="button-renderizado">
+			<button class="@(seccionActiva == 1 ? "activo" : "normal")" @onclick="MostrarInfo1">
+				<i class="bi bi-person"></i> Aprendices
+			</button>
+			<button class="@(seccionActiva == 2 ? "activo" : "normal")" @onclick="MostrarInfo2">
+				<i class="bi bi-journal-bookmark-fill"></i> Competencias
+			</button>
+			<button class="@(seccionActiva == 3 ? "activo" : "normal")" @onclick="MostrarInfo3">
+				<i class="bi bi-calendar3"></i> Cronograma
+			</button>
+			<button class="@(seccionActiva == 5 ? "activo" : "normal")" @onclick="MostrarInfo5">
+				<i class="bi bi-signpost-split"></i> Ruta Formativa
+			</button>
+			<button class="@(seccionActiva == 4 ? "activo" : "normal")" @onclick="() => MostrarInfo4()">
+				<i class="bi bi-folder2-open"></i> Repositorio
+			</button>
+		</div>
+		@if(seccionActiva == 1)
+		{
+			<div class="tabla-all">
+				<div class="filtros-busqueda">
+					<div class="campo-busqueda">
+						<i class="bi bi-search"></i>
+						<input placeholder="Buscar Aprendiz" @bind="busqueda" />
+					</div>
+				</div>
+				<div class="tabla">
+					<div class="tabla-header">
+						<span>Nombre</span>
+						<span>Documento</span>
+						<span>Estado</span>
+						<span>Patrocinio</span>
+					</div>
+
+					<div class="tabla-body">
+
+						@if(!aprendicesPaginados.Any()) {
+
+							<div class="fila-vacia">
+								<span>No hay aprendices registrados</span>
+							</div>
+
+						} else
+						{
+							@foreach (var aprendiz in aprendicesPaginados)
+							{
+								<div class="fila-tabla fila-clickable" @onclick='() => nav.NavigateTo($"/aprendices/{aprendiz.IdAprendiz}/informe")'>
+									<div class="fila-nombre">
+										<div class="avatar-mini">@Iniciales(aprendiz.Nombres)</div>
+										<div class="nombre-info">
+											<span class="nombre-texto">@aprendiz.Nombres</span>
+											<span class="nombre-sub">@aprendiz.NumeroDocumento</span>
+										</div>
+									</div>
+									<span class="documento">@aprendiz.NumeroDocumento</span>
+									<div class="@(aprendiz.AlDia ? "aldia-contenedor" : "atrasado-contenedor")">
+										<i class="@(aprendiz.AlDia ? "bi bi-check-circle-fill" : "bi bi-exclamation-triangle")"></i>
+										<span class="estado @(aprendiz.AlDia ? "aldia" : "atrasado")">
+											@(aprendiz.AlDia ? "Al día" : "Atrasado")
+										</span>
+									</div>
+									<span>@(aprendiz.TienePatrocinio ? "Sí" : "No")</span>
+								</div>
+							}
+						}
+
+					</div>
+					<div class="paginacion">
+						<span class="info-registros">
+							@inicioRegistro - @finRegistro de @aprendices.Count aprendices
+						</span>
+
+						<div class="grupo-paginacion">
+							<button class="btn-pag" @onclick="PaginaAnterior" disabled="@(paginaActual == 1)">
+								<i class="bi bi-chevron-left"></i>
+							</button>
+
+							<span class="pagina-info">
+								Página @paginaActual de @totalPaginas
+							</span>
+
+							<button class="btn-pag" @onclick="PaginaSiguiente" disabled="@(paginaActual == totalPaginas)">
+								<i class="bi bi-chevron-right"></i>
+							</button>
+						</div>
+
+					</div>
+				</div>
+			</div>
+		}
+
+		@if(seccionActiva == 2)
+		{
+			<div class="tabla-all">
+				<div class="grupo-filtros">
+					<button class="@(filtroActivo == 1 ? "activo-filtro" : "normal-filtro")" @onclick="() => FiltroActivo(1)"><i class="bi bi-bookmark"></i>Todas</button>
+					<button class="@(filtroActivo == 2 ? "activo-filtro" : "normal-filtro")" @onclick="() => FiltroActivo(2)"><i class="bi bi-eye"></i>Vistas</button>
+					<button class="@(filtroActivo == 3 ? "activo-filtro" : "normal-filtro")" @onclick="() => FiltroActivo(3)"><i class="bi bi-eye-slash"></i>Pendientes</button>
+					<button class="@(filtroActivo == 4 ? "activo-filtro" : "normal-filtro")" @onclick="() => FiltroActivo(4)"><i class="bi bi-clock-history"></i>Programadas</button>
+						<button class="@(filtroActivo == 5 ? "activo-filtro" : "normal-filtro")" @onclick="() => FiltroActivo(5)"><i class="bi bi-play-circle"></i>En Curso</button>
+				</div>
+				<div class="filtros-busqueda">
+					<div class="campo-busqueda">
+						<i class="bi bi-search"></i>
+						<input placeholder="Buscar Competencia" @bind="busqueda" />
+					</div>
+				</div>
+				<div class="tabla">
+					<div class="tabla-header-competencias">
+						<span>Nombre</span>
+						<span>Estado</span>
+						<span>Fase</span>
+						<span>Fechas Programadas</span>
+						<span>Horas</span>
+						<span></span>
+					</div>
+
+					<div class="tabla-body">
+
+						@if (!competenciasPaginados.Any())
+						{
+
+							<div class="fila-vacia">
+								<span>No hay competencias registradas</span>
+							</div>
+
+						}
+						else
+						{
+							@foreach (var c in competenciasPaginados)
+							{
+								<div class="fila-tabla-competencias fila-clickable @(c.EsMiCompetencia ? "fila-mi-comp" : "")" @onclick="() => ToggleExpandirCompetencia(c)">
+									<span class="nombre-competencias">
+										@c.Nombre
+										@if (c.EsMiCompetencia)
+										{
+											<span class="badge-mi-comp">
+												<i class="bi bi-person-check-fill"></i> Asignada
+											</span>
+										}
+									</span>
+									<div class="@ObtenerClaseEstado(c.Estado)">
+										<i class="@ObtenerClaseIcons(c.Estado)"></i>
+										<span class="estado-competencias">@c.Estado</span>
+									</div>
+									<span>@c.FaseFormativa</span>
+									<span>@c.FechasProgramadas</span>
+									<span>@($"{c.HorasEjecutadas}/{c.TotalHoras ?? c.HorasAsignadas}")</span>
+									<span class="btn-expandir-comp">
+										<i class="bi @(expandidas.ContainsKey(c.IdCompetencia) && expandidas[c.IdCompetencia].Abierto ? "bi-chevron-up" : "bi-chevron-down")"></i>
+									</span>
+								</div>
+
+								@if (expandidas.TryGetValue(c.IdCompetencia, out var exp) && exp.Abierto)
+								{
+									<div class="resultados-expandidos">
+										@if (exp.Cargando)
+										{
+											<span class="ra-cargando">Cargando resultados...</span>
+										}
+										else if (!exp.Resultados.Any())
+										{
+											<span class="ra-vacio">Sin resultados programados.</span>
+										}
+										else
+										{
+											<div class="ra-header">
+												<span>Resultado de Aprendizaje</span>
+												<span>Instructor</span>
+												<span>Fechas</span>
+												<span>Horas</span>
+												<span>Estado</span>
+												<span>Juicios</span>
+											</div>
+											@foreach (var ra in exp.Resultados)
+											{
+												<div class="ra-fila">
+													<span class="ra-nombre">@ra.Nombre</span>
+													<span>@(string.IsNullOrEmpty(ra.NombreInstructor) ? "—" : ra.NombreInstructor)</span>
+													<span>
+														@if (ra.FechaInicio.HasValue && ra.FechaFin.HasValue)
+														{
+															@($"{ra.FechaInicio:dd/MM/yyyy} – {ra.FechaFin:dd/MM/yyyy}")
+														}
+														else { <text>—</text> }
+													</span>
+													<span>@(ra.HorasProgramadas.HasValue ? $"{ra.HorasProgramadas} h" : "—")</span>
+													<span class="@ObtenerClaseEstadoRa(ra.Estado)">@ra.Estado</span>
+													<span>
+														@if (ra.JuiciosCargados > 0)
+														{
+															<span class="pill-juicios @(ra.JuiciosAprobados == ra.TotalJuicios ? "pill-completo" : "")">
+																@ra.JuiciosAprobados/@ra.TotalJuicios
+																<i class="bi bi-check2"></i>
+															</span>
+														}
+														else
+														{
+															<text>—</text>
+														}
+													</span>
+												</div>
+											}
+										}
+									</div>
+								}
+							}
+						}
+
+					</div>
+					<div class="paginacion">
+						<span class="info-registros">
+							@inicioRegistroCompetencias - @finRegistroCompetencias de @competencias.Count competencias
+						</span>
+
+						<div class="grupo-paginacion">
+							<button class="btn-pag" @onclick="PaginaAnteriorCompetencias" disabled="@(paginaActualCompetencias == 1)">
+								<i class="bi bi-chevron-left"></i>
+							</button>
+
+							<span class="pagina-info">
+								Página @paginaActualCompetencias de @totalPaginasCompetencias
+							</span>
+
+							<button class="btn-pag" @onclick="PaginaSiguienteCompetencias" disabled="@(paginaActualCompetencias == totalPaginasCompetencias)">
+								<i class="bi bi-chevron-right"></i>
+							</button>
+						</div>
+					</div>
+				</div>
+				<div class="btns-group">
+					<button class="btn-cargar-juicios" @onclick="AbrirModalJuicios">
+						<i class="bi bi-cloud-upload me-1"></i> Cargar Juicios Evaluativos
+					</button>
+					@if (SesionService.EsAdministrador)
+					{
+						<button class="add-competencias" @onclick="Navegar">Programar competencia</button>
+					}
+				</div>
+			</div>
+		}
+
+	@* ── Sección 3: Cronograma (Kanban) ─────────────────────────────────── *@
+	@if (seccionActiva == 3)
+	{
+		<div class="kanban-board">
+			@foreach (var est in _kanbanEstados)
+			{
+				var grupo = competencias.Where(c => c.Estado == est).ToList();
+				<div class="kanban-col @KanbanColHeaderClass(est)">
+					<div class="kanban-col-header">
+						<div class="kanban-col-titulo-wrap">
+							<span class="kanban-col-dot"></span>
+							<span class="kanban-col-titulo">@est</span>
+						</div>
+						<span class="kanban-col-count">@grupo.Count</span>
+					</div>
+					<p class="kanban-col-desc">@KanbanColDesc(est)</p>
+					<div class="kanban-col-body">
+						@if (!grupo.Any())
+						{
+							<div class="kanban-col-vacio">
+								<i class="bi bi-inbox"></i><span>Sin competencias</span>
+							</div>
+						}
+						else
+						{
+							@foreach (var c in grupo)
+							{
+								var totalH = c.TotalHoras ?? c.HorasAsignadas;
+								var pct    = totalH > 0 ? Math.Min(100.0, (double)c.HorasEjecutadas / totalH * 100.0) : 0;
+								<div class="kanban-card @KanbanCardClass(est)">
+									<div class="kanban-card-header">
+										<span class="kanban-card-nombre" title="@c.Nombre">@c.Nombre</span>
+										@if (c.EsMiCompetencia)
+										{
+											<span class="badge-mi-comp"><i class="bi bi-person-check-fill"></i></span>
+										}
+									</div>
+									@if (c.FechaInicio.HasValue && c.FechaFin.HasValue)
+									{
+										<div class="kanban-card-fechas">
+											<i class="bi bi-calendar3"></i>
+											<span>@($"{c.FechaInicio:dd/MM/yy}") – @($"{c.FechaFin:dd/MM/yy}")</span>
+										</div>
+									}
+									@if (c.ResultadosProgramados.Count > 0)
+									{
+										<ul class="kanban-resultados">
+											@foreach (var r in c.ResultadosProgramados)
+											{
+												<li class="kanban-resultado-item">
+													<span class="kanban-resultado-nombre">@r.Nombre</span>
+													@if (r.HoraInicio.HasValue && r.HoraFin.HasValue)
+													{
+														<span class="kanban-resultado-hora">@r.HoraInicio.Value.ToString("HH:mm") – @r.HoraFin.Value.ToString("HH:mm")</span>
+													}
+												</li>
+											}
+										</ul>
+									}
+									<div class="kanban-card-horas">
+										<div class="kanban-mini-bar">
+											<div class="kanban-mini-fill @KanbanFillClass(est)"
+											     style="@($"width:{pct:F0}%")"></div>
+										</div>
+										<span>@c.HorasEjecutadas / @totalH h</span>
+									</div>
+								</div>
+							}
+						}
+					</div>
+				</div>
+			}
+		</div>
+	}
+
+	@* ── Sección 5: Ruta Formativa (Kanban por fase) ─────────────────────── *@
+	@if (seccionActiva == 5)
+	{
+		<p class="ruta-formativa-hint">
+			<i class="bi bi-info-circle"></i>
+			La ficha está actualmente en fase <strong>@(ficha?.FaseActual ?? "--")</strong>.
+			Las competencias se agrupan según el orden real del proyecto formativo ADSO.
+		</p>
+		<div class="kanban-board">
+			@foreach (var fase in _fasesFormativas)
+			{
+				var grupo = competencias.Where(c => c.FaseFormativa == fase).ToList();
+				var esFaseActual = ficha is not null && ficha.FaseActual == fase;
+				<div class="kanban-col @(esFaseActual ? "kanban-col-fase-actual" : "")">
+					<div class="kanban-col-header">
+						<div class="kanban-col-titulo-wrap">
+							<span class="kanban-col-dot"></span>
+							<span class="kanban-col-titulo">@fase</span>
+							@if (esFaseActual)
+							{
+								<span class="badge-fase-actual">Actual</span>
+							}
+						</div>
+						<span class="kanban-col-count">@grupo.Count</span>
+					</div>
+					<div class="kanban-col-body">
+						@if (!grupo.Any())
+						{
+							<div class="kanban-col-vacio">
+								<i class="bi bi-inbox"></i><span>Sin competencias</span>
+							</div>
+						}
+						else
+						{
+							@foreach (var c in grupo)
+							{
+								<div class="kanban-card @KanbanCardClass(c.Estado)">
+									<div class="kanban-card-header">
+										<span class="kanban-card-nombre" title="@c.Nombre">@c.Nombre</span>
+									</div>
+									<div class="@ObtenerClaseEstado(c.Estado)">
+										<i class="@ObtenerClaseIcons(c.Estado)"></i>
+										<span class="estado-competencias">@c.Estado</span>
+									</div>
+								</div>
+							}
+						}
+					</div>
+				</div>
+			}
+		</div>
+	}
+
+	@* ── Sección 4: Repositorio de la ficha ──────────────────────────────── *@
+	@if (seccionActiva == 4)
+	{
+		<div class="tabla-all">
+			@* Sub-tabs *@
+			<div class="grupo-filtros">
+				<button class="@(subRepoActiva == "guias" ? "activo-filtro" : "normal-filtro")" @onclick='() => CambiarSubRepo("guias")'>
+					<i class="bi bi-book"></i> Guías
+				</button>
+				<button class="@(subRepoActiva == "planeaciones" ? "activo-filtro" : "normal-filtro")" @onclick='() => CambiarSubRepo("planeaciones")'>
+					<i class="bi bi-calendar3"></i> Planeaciones
+				</button>
+				<button class="@(subRepoActiva == "proyectos" ? "activo-filtro" : "normal-filtro")" @onclick='() => CambiarSubRepo("proyectos")'>
+					<i class="bi bi-diagram-3"></i> Proyecto Formativo
+				</button>
+			</div>
+
+			@* Feedback de operación *@
+			@if (!string.IsNullOrWhiteSpace(mensajeRepoOp))
+			{
+				<div class="@(mensajeRepoOp.StartsWith("No") || mensajeRepoOp.StartsWith("Error") ? "mi-error-msg" : "mi-ok-msg")">
+					<i class="bi @(mensajeRepoOp.StartsWith("No") || mensajeRepoOp.StartsWith("Error") ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill")"></i>
+					@mensajeRepoOp
+				</div>
+			}
+
+			@if (cargandoRepo)
+			{
+				<div class="cargando-repo">
+					<span class="spinner-border spinner-border-sm text-primary"></span>
+					<span>Cargando documentos...</span>
+				</div>
+			}
+			else
+			{
+				<div class="tabla">
+					<div class="repo-doc-header">
+						<span>Nombre</span>
+						<span>@(subRepoActiva == "proyectos" ? "Ficha" : "Competencia")</span>
+						<span>Estado</span>
+						<span>Instructor</span>
+						<span>Fecha</span>
+						<span></span>
+					</div>
+					<div class="tabla-body">
+						@if (!DocsActuales.Any())
+						{
+							<div class="fila-vacia">
+								<span>No hay documentos registrados en esta sección</span>
+							</div>
+						}
+						else
+						{
+							@foreach (var doc in DocsActuales)
+							{
+								<div class="repo-doc-fila">
+									<span class="repo-doc-nombre">
+										<i class="bi @(doc.ExtensionArchivo == ".pdf" ? "bi-file-earmark-pdf repo-ico-pdf" : "bi-file-earmark-word repo-ico-docx")"></i>
+										@doc.Nombre
+									</span>
+									<span class="repo-doc-relacion">@(doc.EntidadRelacionada ?? "—")</span>
+									<span class="@RepoEstadoClase(doc.Estado)">@doc.Estado</span>
+									<span class="repo-instructor">@doc.InstructorNombre</span>
+									<span class="repo-fecha">@doc.FechaCreacion.ToString("dd/MM/yyyy")</span>
+									<div class="repo-doc-acciones">
+										<button class="btn-repo-accion" title="Descargar" @onclick="() => DescargarDocRepo(doc)">
+											<i class="bi bi-download"></i>
+										</button>
+										@if (SesionService.EsAdministrador || SesionService.Rol == "Instructor")
+										{
+											<button class="btn-repo-accion btn-repo-danger" title="Eliminar" @onclick="() => EliminarDocRepo(doc)">
+												<i class="bi bi-trash3"></i>
+											</button>
+										}
+									</div>
+								</div>
+							}
+						}
+					</div>
+				</div>
+			}
+		</div>
+
+		@if (SesionService.EsAdministrador || SesionService.Rol == "Instructor")
+		{
+			<div class="btns-group">
+				<button class="btn-cargar-aprendices" @onclick="AbrirModalRepoSubir">
+					<i class="bi bi-cloud-upload me-1"></i> Subir documento
+				</button>
+			</div>
+		}
+	}
+	</div>
+
+	@* ── Modal: Subir documento al repositorio de ficha ──────────────────── *@
+	@if (modalRepoSubirAbierto)
+	{
+		<div class="modal-overlay" @onclick="CerrarModalRepoSubir">
+			<div class="modal-aprendices" @onclick:stopPropagation>
+
+				<div class="ma-header">
+					<div class="ma-titulo">
+						<i class="bi bi-cloud-upload"></i>
+						Subir @(subRepoActiva switch { "guias" => "Guía de Aprendizaje", "planeaciones" => "Planeación Pedagógica", _ => "Proyecto Formativo" })
+					</div>
+					<button class="ma-btn-x" @onclick="CerrarModalRepoSubir" disabled="@subiendoRepo">
+						<i class="bi bi-x-lg"></i>
+					</button>
+				</div>
+
+				<div class="ma-info-msg">
+					<i class="bi bi-info-circle-fill"></i>
+					<span>Ficha <b>@numeroFicha</b> — Formatos aceptados: <b>.pdf</b> y <b>.docx</b>.</span>
+				</div>
+
+				<div class="ma-zona-carga">
+					@if (subRepoActiva == "guias" || subRepoActiva == "proyectos")
+					{
+						<div class="ma-campo">
+							<label>Título <span class="repo-requerido">*</span></label>
+							<input class="form-control form-control-sm" @bind="repoSubirTitulo" placeholder="Título del documento" />
+						</div>
+					}
+
+					@if (subRepoActiva == "guias" || subRepoActiva == "planeaciones")
+					{
+						<div class="ma-campo">
+							<label>Competencia <span class="repo-requerido">*</span></label>
+							<select class="form-select form-select-sm" @bind="repoSubirIdFichaComp">
+								<option value="0">— Selecciona una competencia —</option>
+								@foreach (var c in competencias)
+								{
+									<option value="@c.IdFichaCompetencia">@c.Nombre</option>
+								}
+							</select>
+						</div>
+					}
+
+					<div class="ma-campo">
+						<label>Descripción</label>
+						<input class="form-control form-control-sm" @bind="repoSubirDescripcion" placeholder="Descripción (opcional)" />
+					</div>
+
+					<div class="ma-campo">
+						<label>Archivo <span class="repo-requerido">*</span></label>
+						<label class="ma-btn-seleccionar" for="inputArchivoRepoSubir">
+							@(archivoRepoSubir is null ? "Seleccionar archivo (.pdf o .docx)" : archivoRepoSubir.Name)
+						</label>
+						<InputFile id="inputArchivoRepoSubir" accept=".pdf,.docx"
+						           OnChange="SeleccionarArchivoRepoSubir" class="d-none" />
+					</div>
+
+					<button class="ma-btn-importar" @onclick="SubirDocRepo"
+					        disabled="@(archivoRepoSubir is null || subiendoRepo)">
+						@if (subiendoRepo)
+						{
+							<span class="spinner-border spinner-border-sm me-1"></span>
+							<span>Subiendo...</span>
+						}
+						else
+						{
+							<i class="bi bi-cloud-upload me-1"></i>
+							<span>Subir</span>
+						}
+					</button>
+				</div>
+
+				@if (!string.IsNullOrWhiteSpace(errorRepoSubir))
+				{
+					<div class="ma-error-msg">
+						<i class="bi bi-exclamation-triangle-fill"></i>
+						@errorRepoSubir
+					</div>
+				}
+
+				<div class="ma-footer">
+					<button class="ma-cerrar" @onclick="CerrarModalRepoSubir" disabled="@subiendoRepo">Cerrar</button>
+				</div>
+
+			</div>
+		</div>
+	}
+
+	@* ── Modal: Cargar Juicios Evaluativos ───────────────────────────────── *@
+	@if (modalJuiciosAbierto)
+	{
+		<div class="modal-overlay" @onclick="CerrarModalJuicios">
+			<div class="modal-juicios" @onclick:stopPropagation>
+
+				@* Header *@
+				<div class="mj-header">
+					<div class="mj-titulo">
+						<i class="bi bi-cloud-upload"></i>
+						Cargar Juicios Evaluativos
+					</div>
+					<button class="mi-btn-x" @onclick="CerrarModalJuicios" disabled="@importandoJuicios">
+						<i class="bi bi-x-lg"></i>
+					</button>
+				</div>
+
+				@* Nota informativa *@
+				<div class="mi-info-msg">
+					<i class="bi bi-info-circle-fill"></i>
+					<span>
+						Carga el Reporte de Juicios Evaluativos (.xls) de SOFIA Plus para la ficha
+						<b>@numeroFicha</b>. Solo se actualizan estados de aprendices y juicios ya
+						registrados; no se crean fichas ni aprendices nuevos.
+					</span>
+				</div>
+
+				@* Zona de selección de archivo e importar *@
+				<div class="mj-zona-carga">
+					<label class="mj-btn-seleccionar" for="inputArchivoJuicios">
+						@(archivoJuicios is null ? "Seleccionar archivo .xls" : archivoJuicios.Name)
+					</label>
+					<InputFile id="inputArchivoJuicios" accept=".xls"
+					           OnChange="SeleccionarArchivoJuicios" class="d-none" />
+
+					<button class="mj-btn-importar" @onclick="ImportarJuicios"
+					        disabled="@(archivoJuicios is null || importandoJuicios)">
+						@if (importandoJuicios)
+						{
+							<span class="spinner-border spinner-border-sm me-1"></span>
+							<span>Importando...</span>
+						}
+						else
+						{
+							<i class="bi bi-arrow-repeat me-1"></i>
+							<span>Importar</span>
+						}
+					</button>
+				</div>
+
+				@* Error de validación de archivo *@
+				@if (!string.IsNullOrWhiteSpace(mensajeErrorJuicios))
+				{
+					<div class="mi-error-msg">
+						<i class="bi bi-exclamation-triangle-fill"></i>
+						@mensajeErrorJuicios
+					</div>
+				}
+
+				@* Resultado de la importación *@
+				@if (resultadoJuicios is not null)
+				{
+					<div class="mj-resultado">
+						<div class="mj-resultado-titulo">
+							<i class="bi @(resultadoJuicios.FilasError == resultadoJuicios.TotalFilas && resultadoJuicios.TotalFilas > 0 ? "bi-x-circle-fill mj-icono-error" : "bi-check-circle-fill mj-icono-ok")"></i>
+							@if (resultadoJuicios.FilasError == resultadoJuicios.TotalFilas && resultadoJuicios.TotalFilas > 0)
+							{
+								<span>Importación rechazada</span>
+							}
+							else
+							{
+								<span>Importación completada — ficha(s): @string.Join(", ", resultadoJuicios.FichasAfectadas)</span>
+							}
+						</div>
+
+						<div class="mj-grid">
+							<div class="mj-stat">
+								<span class="mj-num">@resultadoJuicios.TotalFilas</span>
+								<span class="mj-lbl">Filas totales</span>
+							</div>
+							<div class="mj-stat mj-ok">
+								<span class="mj-num">@resultadoJuicios.FilasOk</span>
+								<span class="mj-lbl">Procesadas</span>
+							</div>
+							<div class="mj-stat @(resultadoJuicios.FilasError > 0 ? "mj-error" : "")">
+								<span class="mj-num">@resultadoJuicios.FilasError</span>
+								<span class="mj-lbl">Con error</span>
+							</div>
+							<div class="mj-stat">
+								<span class="mj-num">@resultadoJuicios.AprendicesActualizados</span>
+								<span class="mj-lbl">Estados actualizados</span>
+							</div>
+							<div class="mj-stat">
+								<span class="mj-num">@resultadoJuicios.JuiciosInsertados</span>
+								<span class="mj-lbl">Juicios insertados</span>
+							</div>
+							<div class="mj-stat">
+								<span class="mj-num">@resultadoJuicios.JuiciosActualizados</span>
+								<span class="mj-lbl">Juicios actualizados</span>
+							</div>
+						</div>
+
+						@if (resultadoJuicios.Errores.Any())
+						{
+							<div class="mj-errores">
+								<div class="mj-errores-titulo">
+									<i class="bi bi-exclamation-triangle-fill mj-icono-error"></i>
+									Errores en la importación
+								</div>
+								<ul class="mj-lista-errores">
+									@foreach (var err in resultadoJuicios.Errores)
+									{
+										<li>@err</li>
+									}
+								</ul>
+							</div>
+						}
+					</div>
+				}
+
+				@* Footer *@
+				<div class="mj-footer">
+					<button class="mi-cerrar" @onclick="CerrarModalJuicios"
+					        disabled="@importandoJuicios">
+						Cerrar
+					</button>
+				</div>
+
+			</div>
+		</div>
+	}
+
+
+</section>
+
+@code {
+
+	[Parameter] public string numeroFicha { get; set; } = "";
+
+	FichaDetallesDTO?         ficha        = null;
+	List<AprendizFichaDTO>    aprendices   = [];
+	List<CompetenciaFichaDTO> competencias = [];
+
+	// ── Expansión de RAs por competencia ────────────────────────────────────
+	record ExpansionVm(bool Abierto, bool Cargando, List<ResultadoFichaDTO> Resultados);
+	Dictionary<int, ExpansionVm> expandidas = [];
+
+	string busqueda      = "";
+	int    seccionActiva = 1;
+	int    filtroActivo  = 1;
+
+	// ── Carga ────────────────────────────────────────────────────────────────
+	protected override async Task OnParametersSetAsync()
+	{
+		ficha             = null;
+		aprendices        = [];
+		competencias      = [];
+		expandidas        = [];
+		repoInicializado  = false;
+		repoGuias         = [];
+		repoPlaneaciones  = [];
+		repoProyectos     = [];
+		idFichaActual     = 0;
+		mensajeRepoOp     = "";
+
+		ficha = await FichaApiService.ObtenerDatosAsync(numeroFicha);
+		if (ficha is null) { nav.NavigateTo("/home"); return; }
+
+		var tareaAprendices   = FichaApiService.ObtenerAprendicesAsync(numeroFicha);
+		var tareaCompetencias = FichaApiService.ObtenerFichaCompetenciaAsync(numeroFicha, SesionService.IdUsuario);
+		await Task.WhenAll(tareaAprendices, tareaCompetencias);
+
+		aprendices   = tareaAprendices.Result;
+		competencias = tareaCompetencias.Result;
+	}
+
+	// ── Navegación ───────────────────────────────────────────────────────────
+	void MostrarInfo1() { seccionActiva = 1; paginaActual = 1; }
+	void MostrarInfo2() { seccionActiva = 2; paginaActualCompetencias = 1; }
+	void MostrarInfo3() { seccionActiva = 3; }
+	void MostrarInfo5() { seccionActiva = 5; }
+	async Task MostrarInfo4()
+	{
+		seccionActiva = 4;
+		if (!repoInicializado) await CargarRepositorioFicha();
+	}
+	void Navegar()
+	{
+		SesionService.Ficha = $"{numeroFicha}";
+		nav.NavigateTo("/asignacion-competencias");
+	}
+
+	void NavegarCompetencia(CompetenciaFichaDTO c)
+	{
+		SesionService.Ficha                        = numeroFicha;
+		SesionService.IdCompetenciaPreseleccionada = c.IdCompetencia;
+		nav.NavigateTo("/asignacion-competencias");
+	}
+
+	async Task ToggleExpandirCompetencia(CompetenciaFichaDTO c)
+	{
+		int id = c.IdCompetencia;
+		if (expandidas.TryGetValue(id, out var actual))
+		{
+			// Cerrar si ya estaba abierto
+			if (actual.Abierto) { expandidas[id] = actual with { Abierto = false }; return; }
+		}
+
+		// Abrir y cargar (lazy)
+		expandidas[id] = new ExpansionVm(true, true, []);
+		StateHasChanged();
+
+		var resultados = await ProgramacionApiService.ObtenerResultadosAsync(numeroFicha, id);
+		expandidas[id] = new ExpansionVm(true, false, resultados);
+	}
+
+	void FiltroActivo(int valor) { filtroActivo = valor; paginaActualCompetencias = 1; }
+
+	// ── Estilos competencias ─────────────────────────────────────────────────
+	string ObtenerClaseEstado(string estado) => estado switch
+	{
+		"Programada" => "estado-curso",
+		"En Curso"   => "estado-en-curso",
+		"Vista"      => "estado-finalizado",
+		"Pendiente"  => "estado-empezar",
+		_            => "estado-default"
+	};
+	string ObtenerClaseIcons(string estado) => estado switch
+	{
+		"Programada" => "bi bi-clock-history",
+		"En Curso"   => "bi bi-play-circle-fill",
+		"Vista"      => "bi bi-eye",
+		"Pendiente"  => "bi bi-eye-slash",
+		_            => "bi bi-question-circle"
+	};
+
+	string ObtenerClaseEstadoRa(string estado) => estado switch
+	{
+		"Completado" => "ra-estado-completado",
+		"Programado" => "ra-estado-programado",
+		_            => "ra-estado-pendiente"
+	};
+
+	// ── Filtros ──────────────────────────────────────────────────────────────
+	IEnumerable<AprendizFichaDTO> aprendicesFiltrados =>
+		string.IsNullOrWhiteSpace(busqueda)
+			? aprendices
+			: aprendices.Where(a =>
+				a.Nombres.Contains(busqueda, StringComparison.OrdinalIgnoreCase) ||
+				a.NumeroDocumento.Contains(busqueda, StringComparison.OrdinalIgnoreCase));
+
+	IEnumerable<CompetenciaFichaDTO> competenciasFiltradas =>
+		(filtroActivo switch
+		{
+			2 => competencias.Where(c => c.Estado == "Vista"),
+			3 => competencias.Where(c => c.Estado == "Pendiente"),
+			4 => competencias.Where(c => c.Estado == "Programada"),
+			5 => competencias.Where(c => c.Estado == "En Curso"),
+			_ => competencias.AsEnumerable()
+		})
+		.Where(c => string.IsNullOrWhiteSpace(busqueda) ||
+			c.Nombre.Contains(busqueda, StringComparison.OrdinalIgnoreCase));
+
+	// ── Paginación aprendices ────────────────────────────────────────────────
+	int paginaActual        = 1;
+	int registrosPorPagina  = 7;
+
+	IEnumerable<AprendizFichaDTO> aprendicesPaginados =>
+		aprendicesFiltrados
+			.Skip((paginaActual - 1) * registrosPorPagina)
+			.Take(registrosPorPagina);
+
+	int totalPaginas    => (int)Math.Ceiling((double)aprendicesFiltrados.Count() / registrosPorPagina);
+	int inicioRegistro  => aprendicesFiltrados.Any() ? (paginaActual - 1) * registrosPorPagina + 1 : 0;
+	int finRegistro     => Math.Min(paginaActual * registrosPorPagina, aprendicesFiltrados.Count());
+
+	void PaginaAnterior()  { if (paginaActual > 1)            paginaActual--; }
+	void PaginaSiguiente() { if (paginaActual < totalPaginas) paginaActual++; }
+
+	// ── Modal: Cargar Juicios Evaluativos ────────────────────────────────────
+
+	/// <summary>Estado de visibilidad del modal de importación de juicios.</summary>
+	bool                     modalJuiciosAbierto = false;
+
+	/// <summary>Archivo .xls seleccionado por el usuario, previo al envío.</summary>
+	IBrowserFile?            archivoJuicios      = null;
+
+	/// <summary>true mientras la llamada a la API de importación está en curso.</summary>
+	bool                     importandoJuicios   = false;
+
+	/// <summary>Mensaje de error de validación de archivo o de llamada fallida.</summary>
+	string                   mensajeErrorJuicios = string.Empty;
+
+	/// <summary>Resultado devuelto por la API tras la última importación.</summary>
+	ResultadoImportacionDto? resultadoJuicios    = null;
+
+	/// <summary>
+	/// Abre el modal limpiando cualquier estado residual de una importación anterior.
+	/// </summary>
+	void AbrirModalJuicios()
+	{
+		archivoJuicios      = null;
+		mensajeErrorJuicios = string.Empty;
+		resultadoJuicios    = null;
+		modalJuiciosAbierto = true;
+	}
+
+	/// <summary>
+	/// Cierra el modal. Si hay una importación en curso no hace nada
+	/// para evitar estados inconsistentes.
+	/// </summary>
+	void CerrarModalJuicios()
+	{
+		if (importandoJuicios) return;
+		modalJuiciosAbierto = false;
+	}
+
+	/// <summary>
+	/// Valida que el archivo seleccionado tenga extensión .xls.
+	/// SOFIA Plus exporta exclusivamente en este formato (ver CLAUDE.md §7.5).
+	/// </summary>
+	void SeleccionarArchivoJuicios(InputFileChangeEventArgs e)
+	{
+		mensajeErrorJuicios = string.Empty;
+		resultadoJuicios    = null;
+		var f = e.File;
+
+		if (!f.Name.EndsWith(".xls", StringComparison.OrdinalIgnoreCase))
+		{
+			mensajeErrorJuicios = "Solo se aceptan archivos .xls del Reporte de Juicios Evaluativos de SOFIA Plus.";
+			archivoJuicios      = null;
+			return;
+		}
+		archivoJuicios = f;
+	}
+
+	/// <summary>
+	/// Envía el archivo a la API y recarga las competencias si la importación fue exitosa.
+	/// No crea fichas ni aprendices: el importador solo actualiza estados (CLAUDE.md §7.5).
+	/// </summary>
+	async Task ImportarJuicios()
+	{
+		if (archivoJuicios is null) return;
+
+		importandoJuicios   = true;
+		mensajeErrorJuicios = string.Empty;
+		resultadoJuicios    = null;
+		StateHasChanged();
+
+		try
+		{
+			await using var stream = archivoJuicios.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+			resultadoJuicios = await ImportacionApiService.ImportarAsync(
+				stream, archivoJuicios.Name, SesionService.IdUsuario);
+
+			if (resultadoJuicios is null)
+			{
+				mensajeErrorJuicios = "El servidor no devolvió resultado. Revise los logs de la API.";
+			}
+			else
+			{
+				// Recargar encabezado y competencias para reflejar los cambios
+				// de estado y horas derivados de los juicios importados.
+				var tareaFicha2 = FichaApiService.ObtenerDatosAsync(numeroFicha);
+				var tareaComp2  = FichaApiService.ObtenerFichaCompetenciaAsync(numeroFicha);
+				await Task.WhenAll(tareaFicha2, tareaComp2);
+				ficha        = tareaFicha2.Result;
+				competencias = tareaComp2.Result;
+				expandidas   = []; // invalidar expansiones: los RAs pueden haber cambiado
+			}
+		}
+		catch (Exception ex)
+		{
+			mensajeErrorJuicios = $"Error al importar: {ex.Message}";
+		}
+		finally
+		{
+			importandoJuicios = false;
+			archivoJuicios    = null;
+			StateHasChanged();
+		}
+	}
+
+	// ── Paginación competencias ──────────────────────────────────────────────
+	int paginaActualCompetencias        = 1;
+	int registrosPorPaginaCompetencias  = 7;
+
+	IEnumerable<CompetenciaFichaDTO> competenciasPaginados =>
+		competenciasFiltradas
+			.Skip((paginaActualCompetencias - 1) * registrosPorPaginaCompetencias)
+			.Take(registrosPorPaginaCompetencias);
+
+	int totalPaginasCompetencias       => (int)Math.Ceiling((double)competenciasFiltradas.Count() / registrosPorPaginaCompetencias);
+	int inicioRegistroCompetencias     => competenciasFiltradas.Any() ? (paginaActualCompetencias - 1) * registrosPorPaginaCompetencias + 1 : 0;
+	int finRegistroCompetencias        => Math.Min(paginaActualCompetencias * registrosPorPaginaCompetencias, competenciasFiltradas.Count());
+
+	void PaginaAnteriorCompetencias()  { if (paginaActualCompetencias > 1)                       paginaActualCompetencias--; }
+	void PaginaSiguienteCompetencias() { if (paginaActualCompetencias < totalPaginasCompetencias) paginaActualCompetencias++; }
+
+	// ════════════════════════════════════════════════════════════════════════
+	// SECCIÓN 3 — CRONOGRAMA (Kanban)
+	// ════════════════════════════════════════════════════════════════════════
+
+	static readonly string[] _kanbanEstados = ["Pendiente", "Programada", "En Curso", "Vista"];
+
+	// ════════════════════════════════════════════════════════════════════════
+	// SECCIÓN 5 — RUTA FORMATIVA (Kanban por fase)
+	// ════════════════════════════════════════════════════════════════════════
+	static readonly string[] _fasesFormativas = ["Inducción", "Análisis", "Planeación", "Ejecución", "Evaluación", "Transversal"];
+
+	static string KanbanColDesc(string estado) => estado switch
+	{
+		"Pendiente"  => "Sin fechas ni instructor asignado",
+		"Programada" => "Fechas e instructor definidos",
+		"En Curso"   => "Con resultados en progreso",
+		"Vista"      => "Todos los resultados aprobados",
+		_            => ""
+	};
+
+	string KanbanColHeaderClass(string estado) => estado switch
+	{
+		"Pendiente"  => "kanban-col-pendiente",
+		"Programada" => "kanban-col-programada",
+		"En Curso"   => "kanban-col-en-curso",
+		"Vista"      => "kanban-col-vista",
+		_            => ""
+	};
+
+	string KanbanCardClass(string estado) => estado switch
+	{
+		"Pendiente"  => "kanban-card-pendiente",
+		"Programada" => "kanban-card-programada",
+		"En Curso"   => "kanban-card-en-curso",
+		"Vista"      => "kanban-card-vista",
+		_            => ""
+	};
+
+	string KanbanFillClass(string estado) => estado switch
+	{
+		"Pendiente"  => "kanban-fill-pendiente",
+		"Programada" => "kanban-fill-programada",
+		"En Curso"   => "kanban-fill-en-curso",
+		"Vista"      => "kanban-fill-vista",
+		_            => ""
+	};
+
+	// ════════════════════════════════════════════════════════════════════════
+	// SECCIÓN 4 — REPOSITORIO DE LA FICHA
+	// ════════════════════════════════════════════════════════════════════════
+
+	string  subRepoActiva    = "guias";
+	bool    cargandoRepo     = false;
+	bool    repoInicializado = false;
+	int     idFichaActual    = 0;
+	string  mensajeRepoOp    = "";
+
+	List<DocumentoListadoDTO> repoGuias        = [];
+	List<DocumentoListadoDTO> repoPlaneaciones = [];
+	List<DocumentoListadoDTO> repoProyectos    = [];
+
+	async Task CargarRepositorioFicha()
+	{
+		cargandoRepo  = true;
+		mensajeRepoOp = "";
+		StateHasChanged();
+		try
+		{
+			// Resuelve IdFicha para los uploads de proyectos
+			if (idFichaActual == 0)
+			{
+				var fichas = await RepositorioApiService.ObtenerFichasAsync();
+				idFichaActual = fichas.FirstOrDefault(f => f.NumeroFicha == numeroFicha)?.IdFicha ?? 0;
+			}
+			var t1 = RepositorioApiService.ObtenerGuiasPorFichaAsync(numeroFicha);
+			var t2 = RepositorioApiService.ObtenerPlaneacionesPorFichaAsync(numeroFicha);
+			var t3 = RepositorioApiService.ObtenerProyectosPorFichaAsync(numeroFicha);
+			await Task.WhenAll(t1, t2, t3);
+			repoGuias        = t1.Result;
+			repoPlaneaciones = t2.Result;
+			repoProyectos    = t3.Result;
+			repoInicializado = true;
+		}
+		finally
+		{
+			cargandoRepo = false;
+			StateHasChanged();
+		}
+	}
+
+	void CambiarSubRepo(string subTab)
+	{
+		subRepoActiva = subTab;
+		mensajeRepoOp = "";
+	}
+
+	async Task DescargarDocRepo(DocumentoListadoDTO doc)
+	{
+		var (bytes, ct, nombre) = await RepositorioApiService.DescargarAsync(doc.IdArchivo, SesionService.IdUsuario);
+		if (bytes is null) { mensajeRepoOp = "No se pudo descargar el archivo."; return; }
+		var mime = ct ?? "application/octet-stream";
+		var fn   = string.IsNullOrWhiteSpace(nombre) ? doc.NombreOriginal : nombre;
+		await JS.InvokeVoidAsync("downloadBytesAsFile", fn, bytes, mime);
+	}
+
+	async Task EliminarDocRepo(DocumentoListadoDTO doc)
+	{
+		var ok = await JS.InvokeAsync<bool>("confirm", $"¿Eliminar '{doc.Nombre}'?");
+		if (!ok) return;
+		var resultado = await RepositorioApiService.EliminarAsync(doc.TipoDocumento, doc.IdDocumento, SesionService.IdUsuario);
+		if (resultado)
+		{
+			switch (doc.TipoDocumento)
+			{
+				case "Guia":       repoGuias.Remove(doc);        break;
+				case "Planeacion": repoPlaneaciones.Remove(doc); break;
+				case "Proyecto":   repoProyectos.Remove(doc);    break;
+			}
+			mensajeRepoOp = "Documento eliminado correctamente.";
+		}
+		else
+		{
+			mensajeRepoOp = "No se pudo eliminar. Verifica que tienes permiso sobre este documento.";
+		}
+	}
+
+	IEnumerable<DocumentoListadoDTO> DocsActuales => subRepoActiva switch
+	{
+		"guias"        => repoGuias,
+		"planeaciones" => repoPlaneaciones,
+		_              => repoProyectos
+	};
+
+	string RepoEstadoClase(string estado) => estado switch
+	{
+		"Publicado" => "repo-estado-publicado",
+		"Cerrado"   => "repo-estado-cerrado",
+		_           => "repo-estado-borrador"
+	};
+
+	// ── Modal: subir documento al repositorio de ficha ───────────────────────
+	bool          modalRepoSubirAbierto = false;
+	IBrowserFile? archivoRepoSubir      = null;
+	string        repoSubirTitulo       = "";
+	string        repoSubirDescripcion  = "";
+	int           repoSubirIdFichaComp  = 0;
+	bool          subiendoRepo          = false;
+	string        errorRepoSubir        = "";
+
+	void AbrirModalRepoSubir()
+	{
+		archivoRepoSubir     = null;
+		repoSubirTitulo      = "";
+		repoSubirDescripcion = "";
+		repoSubirIdFichaComp = competencias.FirstOrDefault()?.IdFichaCompetencia ?? 0;
+		errorRepoSubir       = "";
+		modalRepoSubirAbierto = true;
+	}
+
+	void CerrarModalRepoSubir()
+	{
+		if (subiendoRepo) return;
+		modalRepoSubirAbierto = false;
+	}
+
+	void SeleccionarArchivoRepoSubir(InputFileChangeEventArgs e)
+	{
+		errorRepoSubir = "";
+		var f   = e.File;
+		var ext = System.IO.Path.GetExtension(f.Name).ToLowerInvariant();
+		if (ext != ".pdf" && ext != ".docx")
+		{
+			errorRepoSubir   = "Solo se aceptan archivos .pdf o .docx.";
+			archivoRepoSubir = null;
+			return;
+		}
+		archivoRepoSubir = f;
+	}
+
+	async Task SubirDocRepo()
+	{
+		if (archivoRepoSubir is null) { errorRepoSubir = "Selecciona un archivo."; return; }
+
+		bool esGuia = subRepoActiva == "guias";
+		bool esPlan = subRepoActiva == "planeaciones";
+		bool esProy = subRepoActiva == "proyectos";
+
+		if ((esGuia || esPlan) && repoSubirIdFichaComp == 0)
+			{ errorRepoSubir = "Selecciona una competencia."; return; }
+		if ((esGuia || esProy) && string.IsNullOrWhiteSpace(repoSubirTitulo))
+			{ errorRepoSubir = "El título es requerido."; return; }
+
+		subiendoRepo   = true;
+		errorRepoSubir = "";
+		StateHasChanged();
+
+		try
+		{
+			await using var stream = archivoRepoSubir.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+			string? desc = string.IsNullOrWhiteSpace(repoSubirDescripcion) ? null : repoSubirDescripcion;
+			bool ok = false;
+
+			if (esGuia)
+				ok = await RepositorioApiService.SubirGuiaAsync(stream, archivoRepoSubir.Name,
+				         repoSubirTitulo, desc, repoSubirIdFichaComp, SesionService.IdUsuario);
+			else if (esPlan)
+				ok = await RepositorioApiService.SubirPlaneacionAsync(stream, archivoRepoSubir.Name,
+				         desc, repoSubirIdFichaComp, SesionService.IdUsuario);
+			else if (esProy)
+				ok = await RepositorioApiService.SubirProyectoAsync(stream, archivoRepoSubir.Name,
+				         repoSubirTitulo, desc, idFichaActual, SesionService.IdUsuario);
+
+			if (ok)
+			{
+				modalRepoSubirAbierto = false;
+				mensajeRepoOp         = "Documento subido correctamente.";
+				await CargarRepositorioFicha();
+			}
+			else
+			{
+				errorRepoSubir = "Error al subir el documento. Verifica los datos e intenta de nuevo.";
+			}
+		}
+		catch (Exception ex)
+		{
+			errorRepoSubir = $"Error: {ex.Message}";
+		}
+		finally
+		{
+			subiendoRepo = false;
+			StateHasChanged();
+		}
+	}
+
+	private static string Iniciales(string nombre)
+	{
+		var partes = nombre.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		return partes.Length >= 2
+			? $"{partes[0][0]}{partes[1][0]}".ToUpperInvariant()
+			: partes.Length == 1 ? partes[0][0].ToString().ToUpperInvariant()
+			: "?";
+	}
+}

@@ -1,0 +1,28 @@
+﻿@using AdsoLabs.Web.Components.Layout
+
+@* Esto envuelve toda la app con el sistema de autenticación *@
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(Routes).Assembly">
+        <Found Context="routeData">
+            @* AuthorizeRouteView verifica permisos antes de renderizar cada página *@
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="@typeof(MainLayout)">
+
+                @* Esto se muestra si el usuario NO está autenticado *@
+                <NotAuthorized>
+                    <RedirectToLogin />
+                </NotAuthorized>
+
+                @* Esto se muestra mientras verifica los permisos *@
+                <Authorizing>
+                    <p>Verificando permisos...</p>
+                </Authorizing>
+
+            </AuthorizeRouteView>
+        </Found>
+        <NotFound>
+            <p>Página no encontrada.</p>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>
+
+@inject NavigationManager NavigationManager

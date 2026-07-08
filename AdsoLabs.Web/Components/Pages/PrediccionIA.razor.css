@@ -1,0 +1,1502 @@
+/* ═══════════════════════════════════════════════════════════════════
+   PrediccionIA.razor.css — ADSO Labs
+   Paleta: #4C2FBF (indigo) · #6D28D9 (violeta) · #3B82F6 (azul)
+           #10B981 (verde)  · #F59E0B (ámbar)   · #EF4444 (rojo)
+   Fondo : #F4F6FB  ·  Tarjetas: #FFFFFF
+   NOTA  : NO usar var() — el scoping de Blazor no hereda :root
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Base ─────────────────────────────────────────────────────────── */
+.pia {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 3rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.pia-titulo {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin-top: 2rem;
+    margin-bottom: .2rem;
+}
+
+.pia-subtitulo {
+    font-size: .9rem;
+    font-weight: 400;
+    color: #94A3B8;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+/* ── Pestañas ────────────────────────────────────────────────────── */
+.pia-tabs {
+    display: flex;
+    border-bottom: 2px solid #E2E8F0;
+    margin-bottom: 2rem;
+}
+
+.pia-tab {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .75rem 1.5rem;
+    font-size: .92rem;
+    font-weight: 500;
+    font-family: 'Poppins', sans-serif;
+    color: #64748B;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    transition: color .15s, border-color .15s;
+}
+
+.pia-tab:hover { color: #4C2FBF; }
+
+.pia-tab-activa {
+    color: #4C2FBF;
+    border-bottom-color: #4C2FBF;
+    font-weight: 600;
+}
+
+/* ── Encabezado de sección ───────────────────────────────────────── */
+.pia-seccion-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.pia-seccion-header-row {
+    align-items: center;
+    justify-content: space-between;
+}
+
+.pia-header-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.pia-header-right {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+.pia-icon-badge {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.pia-icon-indigo { background: linear-gradient(135deg, #4C2FBF, #6D28D9); }
+.pia-icon-robot  { background: linear-gradient(135deg, #3B82F6, #4C2FBF); }
+
+.pia-seccion-titulo {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin: 0 0 .2rem;
+}
+
+.pia-seccion-sub {
+    font-size: .85rem;
+    color: #94A3B8;
+    margin: 0;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────── */
+.pia-card {
+    background: #FFFFFF;
+    border-radius: 16px;
+    border: 1px solid #F1F5F9;
+    box-shadow: 0 2px 12px rgba(0,0,0,.05);
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.pia-card-titulo {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1E293B;
+    margin: 0 0 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+/* ── Grid superior (instructor + compat) ─────────────────────────── */
+.pia-top-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+/* ── Tarjeta instructor ──────────────────────────────────────────── */
+.pia-instructor-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.pia-avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4C2FBF, #6D28D9);
+    color: white;
+    font-size: 1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pia-instructor-datos {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+}
+
+.pia-nombre {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.pia-email {
+    font-size: .78rem;
+    color: #64748B;
+}
+
+.pia-badges-row {
+    display: flex;
+    gap: .45rem;
+    margin-top: .3rem;
+}
+
+.pia-badge {
+    padding: .18rem .65rem;
+    border-radius: 20px;
+    font-size: .73rem;
+    font-weight: 600;
+}
+
+.pia-badge-esp    { background: #EEF2FF; color: #4C2FBF; }
+.pia-badge-activo { background: #ECFDF5; color: #10B981; }
+
+/* ── Donut de compatibilidad ─────────────────────────────────────── */
+.pia-compat-row {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.pia-donut-wrap { flex-shrink: 0; }
+
+.pia-donut {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    background: conic-gradient(#4C2FBF 0% 85%, #E8E6F0 85% 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.pia-donut::before {
+    content: '';
+    position: absolute;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #FFFFFF;
+}
+
+.pia-donut-val {
+    position: relative;
+    z-index: 1;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #4C2FBF;
+}
+
+.pia-compat-titulo {
+    font-size: .95rem;
+    font-weight: 600;
+    color: #1E293B;
+    display: block;
+    margin-bottom: .35rem;
+}
+
+.pia-compat-desc {
+    font-size: .8rem;
+    color: #64748B;
+    margin: 0;
+    line-height: 1.55;
+}
+
+/* ── Tabla de sugerencias ────────────────────────────────────────── */
+.pia-tabla-encabezado {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+
+.pia-filtro-ficha {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .8rem;
+    color: #64748B;
+}
+
+.pia-filtro-ficha select {
+    font-size: .82rem;
+    padding: .3rem .75rem;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    background: #F8FAFC;
+    color: #1E293B;
+    cursor: pointer;
+}
+
+.pia-info-icon {
+    font-size: .85rem;
+    color: #94A3B8;
+    cursor: help;
+}
+
+.pia-tabla-head {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: .5rem;
+    padding: .5rem .75rem;
+    background: #F8FAFC;
+    border-radius: 8px;
+    margin-bottom: .25rem;
+    font-size: .73rem;
+    font-weight: 600;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.pia-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: .5rem;
+    align-items: center;
+    padding: .85rem .75rem;
+    border-radius: 10px;
+    border-bottom: 1px solid #F8FAFC;
+    transition: background .12s;
+}
+
+.pia-fila:last-of-type { border-bottom: none; }
+.pia-fila:hover { background: #FAFBFF; }
+
+.pia-comp-cell {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    min-width: 0;
+}
+
+.pia-comp-icon-sm {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: #EEF2FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4C2FBF;
+    font-size: .95rem;
+    flex-shrink: 0;
+}
+
+.pia-comp-nombre {
+    font-size: .83rem;
+    font-weight: 500;
+    color: #1E293B;
+    line-height: 1.35;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.pia-ficha-cell {
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+}
+
+.pia-ficha-num {
+    font-size: .83rem;
+    font-weight: 600;
+    color: #4C2FBF;
+}
+
+.pia-ficha-fase {
+    font-size: .73rem;
+    color: #94A3B8;
+}
+
+.pia-ficha-fase-formativa {
+    font-size: .68rem;
+    font-weight: 600;
+    color: #4C2FBF;
+    background: #EDE9FE;
+    border-radius: .4rem;
+    padding: .05rem .4rem;
+    width: fit-content;
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+}
+
+.pia-ficha-fase-comp {
+    color: #0369A1;
+    background: #E0F2FE;
+}
+
+.pia-progreso-cell {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-size: .78rem;
+    color: #64748B;
+}
+
+.pia-bar-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: #E2E8F0;
+    overflow: hidden;
+}
+
+.pia-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #4C2FBF, #6D28D9);
+}
+
+.pia-compat-cell {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .85rem;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.pia-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.pia-dot-alta  { background: #10B981; }
+.pia-dot-media { background: #F59E0B; }
+.pia-dot-baja  { background: #EF4444; }
+
+.pia-accion-cell {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+
+.pia-btn-asignar {
+    padding: .38rem .9rem;
+    background: #4C2FBF;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: .78rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s;
+}
+
+.pia-btn-asignar:hover { background: #3b24a0; }
+
+.pia-chevron {
+    color: #CBD5E1;
+    font-size: .78rem;
+}
+
+.pia-btn-ver-mas {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    width: 100%;
+    padding: .75rem;
+    margin-top: .5rem;
+    background: transparent;
+    border: none;
+    border-top: 1px solid #F1F5F9;
+    color: #4C2FBF;
+    font-size: .83rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+}
+
+.pia-btn-ver-mas:hover { color: #3b24a0; }
+
+/* ── Reglas de asignación ────────────────────────────────────────── */
+.pia-reglas-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.pia-regla-card {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+}
+
+.pia-regla-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #EEF2FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4C2FBF;
+    font-size: .95rem;
+    flex-shrink: 0;
+}
+
+.pia-regla-titulo {
+    font-size: .85rem;
+    font-weight: 600;
+    color: #1E293B;
+    display: block;
+    margin-bottom: .25rem;
+}
+
+.pia-regla-texto p {
+    font-size: .78rem;
+    color: #64748B;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* ── Leyenda ─────────────────────────────────────────────────────── */
+.pia-leyenda {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    font-size: .78rem;
+    color: #64748B;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.pia-leyenda > span {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+
+/* ── Timestamp + refresh ─────────────────────────────────────────── */
+.pia-timestamp {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .05rem;
+}
+
+.pia-ts-label {
+    font-size: .72rem;
+    color: #94A3B8;
+}
+
+.pia-ts-val {
+    font-size: .78rem;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.pia-btn-refresh {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4C2FBF;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.pia-btn-refresh:hover { background: #EEF2FF; }
+
+/* ── Hero card gradiente ─────────────────────────────────────────── */
+.pia-hero-card {
+    background: linear-gradient(135deg, #1E1B4B 0%, #3730A3 40%, #4C2FBF 70%, #6D28D9 100%);
+    border-radius: 16px;
+    padding: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+    position: relative;
+    color: white;
+}
+
+.pia-hero-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+
+.pia-hero-body { flex: 1; min-width: 0; }
+
+.pia-hero-texto {
+    font-size: .9rem;
+    line-height: 1.65;
+    margin: 0 0 1rem;
+    color: rgba(255,255,255,.9);
+}
+
+.pia-btn-como {
+    padding: .45rem 1.2rem;
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.35);
+    border-radius: 8px;
+    color: white;
+    font-size: .83rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.pia-btn-como:hover { background: rgba(255,255,255,.28); }
+
+.pia-hero-deco {
+    flex-shrink: 0;
+    width: 180px;
+    opacity: .8;
+}
+
+.pia-hero-deco svg { width: 100%; height: auto; }
+
+/* ── Fila de sección (título + carrusel) ─────────────────────────── */
+.pia-section-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.pia-section-titulo {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1E293B;
+    margin: 0;
+}
+
+.pia-carousel-btns { display: flex; gap: .35rem; }
+
+.pia-carousel-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748B;
+    font-size: .78rem;
+    cursor: pointer;
+    transition: background .12s;
+}
+
+.pia-carousel-btn:hover { background: #F1F5F9; }
+
+/* ── Temáticas emergentes ────────────────────────────────────────── */
+.pia-tematicas-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.pia-tematica-card {
+    background: white;
+    border: 1px solid #F1F5F9;
+    border-radius: 14px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+}
+
+.pia-num-badge {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #EEF2FF;
+    color: #4C2FBF;
+    font-size: .75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pia-tematica-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: #4C2FBF;
+    margin: .2rem 0;
+}
+
+.pia-tematica-titulo {
+    font-size: .87rem;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.pia-tematica-desc {
+    font-size: .75rem;
+    color: #64748B;
+    margin: 0;
+    line-height: 1.5;
+    flex: 1;
+}
+
+.pia-relevancia {
+    font-size: .7rem;
+    font-weight: 600;
+    padding: .18rem .6rem;
+    border-radius: 20px;
+    align-self: flex-start;
+}
+
+.pia-rel-alta  { background: #ECFDF5; color: #10B981; }
+.pia-rel-media { background: #FFFBEB; color: #F59E0B; }
+
+.pia-btn-detalle {
+    font-size: .75rem;
+    color: #4C2FBF;
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    font-weight: 500;
+    text-align: left;
+    margin-top: .15rem;
+}
+
+.pia-btn-detalle:hover { text-decoration: underline; }
+
+/* ── Ruta de aprendizaje ─────────────────────────────────────────── */
+.pia-ruta-card { margin-bottom: 1.25rem; }
+
+.pia-ruta-steps {
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+}
+
+.pia-paso {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: .4rem;
+}
+
+.pia-paso-num {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #4C2FBF;
+    color: white;
+    font-size: .88rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pia-paso-titulo {
+    font-size: .83rem;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.pia-paso-desc {
+    font-size: .73rem;
+    color: #64748B;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.pia-paso-flecha {
+    font-size: 1.25rem;
+    color: #CBD5E1;
+    flex-shrink: 0;
+    padding-top: .5rem;
+}
+
+/* ── KPIs de impacto ─────────────────────────────────────────────── */
+.pia-kpis-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+}
+
+.pia-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    padding: 1rem 1.1rem;
+    background: #F8FAFC;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+}
+
+.pia-kpi-label {
+    font-size: .75rem;
+    color: #64748B;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.pia-kpi-val {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #1E293B;
+    line-height: 1.05;
+}
+
+.pia-kpi-alta {
+    color: #10B981;
+    font-size: 1.4rem;
+}
+
+.pia-kpi-trend {
+    font-size: .73rem;
+    font-weight: 500;
+}
+
+.pia-trend-verde { color: #10B981; }
+
+.pia-kpi-meta {
+    font-size: .7rem;
+    color: #94A3B8;
+}
+
+.pia-kpi-bar {
+    height: 5px;
+    border-radius: 3px;
+    background: #E2E8F0;
+    overflow: hidden;
+    margin-top: .2rem;
+}
+
+.pia-kpi-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #4C2FBF, #6D28D9);
+}
+
+/* ── Modal "Cómo funciona" ───────────────────────────────────────── */
+.pia-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.50);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+}
+
+.pia-modal-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.18);
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.pia-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 1.5rem 1.5rem 0;
+    gap: 1rem;
+}
+
+.pia-modal-titulo-wrap {
+    display: flex;
+    align-items: flex-start;
+    gap: .875rem;
+}
+
+.pia-modal-icono {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #3B82F6, #4C2FBF);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: white;
+    flex-shrink: 0;
+}
+
+.pia-modal-titulo {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin: 0 0 .2rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.pia-modal-sub {
+    font-size: .78rem;
+    color: #94A3B8;
+    margin: 0;
+}
+
+.pia-modal-cerrar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: #F1F5F9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748B;
+    cursor: pointer;
+    font-size: .85rem;
+    flex-shrink: 0;
+    transition: background .12s;
+}
+
+.pia-modal-cerrar:hover { background: #E2E8F0; }
+
+.pia-modal-body {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.pia-modal-paso {
+    display: flex;
+    align-items: flex-start;
+    gap: .875rem;
+}
+
+.pia-modal-paso-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #EEF2FF;
+    color: #4C2FBF;
+    font-size: .85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: .1rem;
+}
+
+.pia-modal-paso-titulo {
+    font-size: .9rem;
+    font-weight: 600;
+    color: #1E293B;
+    display: block;
+    margin-bottom: .3rem;
+}
+
+.pia-modal-paso-desc {
+    font-size: .82rem;
+    color: #475569;
+    margin: 0;
+    line-height: 1.6;
+}
+
+.pia-modal-aviso {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    padding: .875rem 1rem;
+    background: #EEF2FF;
+    border-radius: 10px;
+    border-left: 3px solid #4C2FBF;
+}
+
+.pia-modal-aviso i {
+    color: #4C2FBF;
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: .1rem;
+}
+
+.pia-modal-aviso p {
+    font-size: .8rem;
+    color: #3730A3;
+    margin: 0;
+    line-height: 1.55;
+}
+
+.pia-modal-footer {
+    padding: 1rem 1.5rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid #F1F5F9;
+}
+
+.pia-modal-btn-ok {
+    padding: .5rem 1.5rem;
+    background: #4C2FBF;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: .85rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.pia-modal-btn-ok:hover { background: #3b24a0; }
+
+/* ── Tab badge ───────────────────────────────────────────────────── */
+.pia-tab-badge {
+    background: #EF4444;
+    color: white;
+    border-radius: 20px;
+    font-size: .66rem;
+    font-weight: 700;
+    padding: .08rem .42rem;
+    min-width: 18px;
+    text-align: center;
+}
+
+/* ── Alertas globales ────────────────────────────────────────────── */
+.pia-alerta {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .75rem 1rem;
+    border-radius: 10px;
+    font-size: .84rem;
+    margin-bottom: 1rem;
+}
+
+.pia-alerta-ok  { background: #ECFDF5; color: #065F46; border: 1px solid #6EE7B7; }
+.pia-alerta-err { background: #FEF2F2; color: #7F1D1D; border: 1px solid #FECACA; }
+
+.pia-alerta-cerrar {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+    opacity: .6;
+    font-size: .85rem;
+    padding: 0;
+}
+
+.pia-alerta-cerrar:hover { opacity: 1; }
+
+/* ── Skeleton loading ────────────────────────────────────────────── */
+.pia-skeleton-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.pia-skeleton {
+    border-radius: 14px;
+    background: linear-gradient(90deg, #F1F5F9 25%, #E8EEFA 50%, #F1F5F9 75%);
+    background-size: 400% 100%;
+    animation: pia-shimmer 1.4s ease infinite;
+}
+
+.pia-skeleton-card   { height: 140px; }
+.pia-skeleton-hero   { height: 110px; }
+.pia-skeleton-table  { height: 220px; }
+.pia-skeleton-grid4  { height: 170px; }
+
+@keyframes pia-shimmer {
+    0%   { background-position: 100% 0; }
+    100% { background-position: -100% 0; }
+}
+
+/* ── Estado de error ─────────────────────────────────────────────── */
+.pia-estado-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+    padding: 2.5rem;
+    background: #FEF2F2;
+    border-radius: 14px;
+    border: 1px solid #FECACA;
+    color: #7F1D1D;
+    text-align: center;
+    font-size: .9rem;
+}
+
+.pia-estado-error i { font-size: 1.8rem; color: #EF4444; }
+.pia-estado-error p { margin: 0; }
+
+.pia-btn-retry {
+    padding: .4rem 1.2rem;
+    background: #EF4444;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: .82rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.pia-btn-retry:hover { background: #DC2626; }
+
+/* ── Vacío ───────────────────────────────────────────────────────── */
+.pia-vacio {
+    text-align: center;
+    color: #94A3B8;
+    font-size: .85rem;
+    padding: 1.5rem 0;
+}
+
+.pia-vacio-centrado {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .75rem;
+    padding: 3rem;
+    color: #94A3B8;
+    font-size: .9rem;
+}
+
+.pia-vacio-centrado i { font-size: 2.5rem; opacity: .5; }
+.pia-vacio-centrado p { margin: 0; }
+
+/* ── Razonamiento en tabla ───────────────────────────────────────── */
+.pia-comp-razon {
+    font-size: .72rem;
+    color: #94A3B8;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-top: .1rem;
+}
+
+/* ── Fortalezas ──────────────────────────────────────────────────── */
+.pia-fortalezas-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+    margin-top: .25rem;
+}
+
+.pia-fortaleza-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    font-size: .7rem;
+    padding: .15rem .5rem;
+    border-radius: 20px;
+    background: #ECFDF5;
+    color: #065F46;
+}
+
+/* ── Botones de estado solicitud ─────────────────────────────────── */
+.pia-btn-enviado {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .35rem .8rem;
+    background: #FFF7ED;
+    color: #92400E;
+    border-radius: 8px;
+    font-size: .75rem;
+    font-weight: 600;
+}
+
+.pia-btn-asignar:disabled {
+    background: #A5B4FC;
+    cursor: default;
+}
+
+.pia-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: pia-spin .7s linear infinite;
+}
+
+@keyframes pia-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── KPI icono dinámico ──────────────────────────────────────────── */
+.pia-kpi-icon { font-size: 1.4rem; margin-bottom: .2rem; }
+.pia-kpi-color-green  { color: #10B981; }
+.pia-kpi-color-blue   { color: #3B82F6; }
+.pia-kpi-color-amber  { color: #F59E0B; }
+.pia-kpi-color-violet { color: #6D28D9; }
+
+/* ── Tabla solicitudes (admin) ───────────────────────────────────── */
+.pia-solic-tabla-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 2fr) minmax(0, 1fr) minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: .5rem;
+    padding: .5rem .75rem;
+    background: #F8FAFC;
+    border-radius: 8px;
+    margin-bottom: .25rem;
+    font-size: .72rem;
+    font-weight: 600;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.pia-solic-fila {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 2fr) minmax(0, 1fr) minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: .5rem;
+    align-items: center;
+    padding: .8rem .75rem;
+    border-bottom: 1px solid #F8FAFC;
+    font-size: .82rem;
+    color: #1E293B;
+}
+
+.pia-solic-fila:last-child { border-bottom: none; }
+.pia-solic-fila:hover { background: #FAFBFF; }
+
+.pia-solic-nombre { font-weight: 500; }
+
+.pia-solic-comp {
+    color: #475569;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    cursor: help;
+}
+
+.pia-solic-fecha { color: #64748B; font-size: .78rem; }
+
+.pia-solic-estado {
+    display: inline-flex;
+    align-items: center;
+    padding: .2rem .6rem;
+    border-radius: 20px;
+    font-size: .73rem;
+    font-weight: 600;
+    width: fit-content;
+}
+
+.pia-solic-estado-pendiente  { background: #FFF7ED; color: #92400E; }
+.pia-solic-estado-aprobada   { background: #ECFDF5; color: #065F46; }
+.pia-solic-estado-rechazada  { background: #FEF2F2; color: #7F1D1D; }
+
+.pia-solic-acciones {
+    display: flex;
+    gap: .35rem;
+    align-items: center;
+}
+
+.pia-btn-aprobar {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .3rem .75rem;
+    background: #10B981;
+    color: white;
+    border: none;
+    border-radius: 7px;
+    font-size: .75rem;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    cursor: pointer;
+    transition: background .15s;
+    white-space: nowrap;
+}
+
+.pia-btn-aprobar:hover { background: #059669; }
+
+.pia-btn-rechazar {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #FEF2F2;
+    color: #EF4444;
+    border: 1px solid #FECACA;
+    border-radius: 7px;
+    font-size: .82rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+
+.pia-btn-rechazar:hover { background: #FEE2E2; }
+
+.pia-solic-resuelta { color: #CBD5E1; font-size: .82rem; }
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 960px) {
+    .pia-top-grid    { grid-template-columns: 1fr; }
+    .pia-reglas-grid { grid-template-columns: 1fr; }
+    .pia-tematicas-grid { grid-template-columns: repeat(2, 1fr); }
+    .pia-kpis-grid   { grid-template-columns: repeat(2, 1fr); }
+    .pia-hero-deco   { display: none; }
+
+    .pia-tabla-head,
+    .pia-fila {
+        grid-template-columns: 2fr 1fr 1fr;
+    }
+    .pia-tabla-head span:nth-child(4),
+    .pia-fila > div:nth-child(4) { display: none; }
+
+    .pia-solic-tabla-head,
+    .pia-solic-fila { grid-template-columns: 1.5fr 2fr 1fr 1fr 1.2fr; }
+    .pia-solic-tabla-head span:nth-child(4),
+    .pia-solic-tabla-head span:nth-child(5),
+    .pia-solic-fila span:nth-child(4),
+    .pia-solic-fila span:nth-child(5) { display: none; }
+
+    .pia-seccion-header-row { flex-wrap: wrap; gap: .75rem; }
+}
+
+@media (max-width: 600px) {
+    .pia-tab { padding: .65rem .9rem; font-size: .82rem; }
+    .pia-tematicas-grid { grid-template-columns: 1fr; }
+    .pia-kpis-grid      { grid-template-columns: 1fr; }
+    .pia-ruta-steps     { flex-wrap: wrap; justify-content: center; }
+    .pia-paso-flecha    { display: none; }
+
+    .pia-solic-tabla-head,
+    .pia-solic-fila { grid-template-columns: 1fr 1fr 1.2fr; }
+    .pia-solic-tabla-head span:nth-child(n+4),
+    .pia-solic-fila span:nth-child(n+4),
+    .pia-solic-fila div:nth-child(n+4) { display: none; }
+    .pia-solic-acciones { display: flex; }
+}
+
+/* ── Selector de competencia (Tab 2, paso 1) ──────────────────────── */
+.pia-selector-hint {
+    font-size: .88rem;
+    color: #64748B;
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    border-radius: 8px;
+    padding: .75rem 1rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.pia-selector-hint i { color: #3B82F6; flex-shrink: 0; }
+
+.pia-comp-selector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.pia-comp-selector-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .2s, box-shadow .2s, transform .1s;
+    width: 100%;
+}
+.pia-comp-selector-card:hover {
+    border-color: #4C2FBF;
+    box-shadow: 0 4px 16px rgba(76,47,191,.1);
+    transform: translateY(-2px);
+}
+
+.pia-comp-sel-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4C2FBF, #6D28D9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #FFFFFF;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.pia-comp-sel-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    min-width: 0;
+}
+
+.pia-comp-sel-nombre {
+    font-size: .9rem;
+    font-weight: 600;
+    color: #1E293B;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pia-comp-sel-ficha {
+    font-size: .78rem;
+    color: #64748B;
+}
+.pia-comp-sel-codigo {
+    font-size: .72rem;
+    color: #94A3B8;
+}
+.pia-comp-sel-resultados { margin-top: .35rem; }
+.pia-comp-sel-rlabel {
+    font-size: .75rem;
+    background: #EDE9FE;
+    color: #5B21B6;
+    border-radius: 20px;
+    padding: .15rem .6rem;
+    font-weight: 500;
+}
+
+/* Botón volver */
+.pia-btn-volver {
+    width: 34px;
+    height: 34px;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 8px;
+    background: #FFFFFF;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color .2s, color .2s;
+    margin-right: .25rem;
+}
+.pia-btn-volver:hover { border-color: #4C2FBF; color: #4C2FBF; }
+
+/* Resultados asignados en la predicción */
+.pia-resultados-asignados {
+    margin-bottom: 1.25rem;
+}
+.pia-resultados-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .6rem;
+}
+.pia-resultado-chip {
+    background: #EDE9FE;
+    color: #5B21B6;
+    border-radius: 20px;
+    padding: .25rem .75rem;
+    font-size: .78rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+}
+.pia-resultado-chip i { font-size: .8rem; }
+
+/* Hero tendencia label */
+.pia-hero-tendencia {
+    display: block;
+    font-size: 1rem;
+    font-weight: 700;
+    color: rgba(255,255,255,.95);
+    margin-bottom: .4rem;
+}
+
+@media (max-width: 600px) {
+    .pia-comp-selector-grid { grid-template-columns: 1fr; }
+}

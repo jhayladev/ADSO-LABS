@@ -1,0 +1,281 @@
+﻿@page "/aprendiz"
+@using AdsoLabs.Application.DTOs.Aprendiz
+@using AdsoLabs.Application.DTOs.Fichas
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@attribute [Authorize(Roles = "Administrador")]
+@rendermode InteractiveServer
+@inject NavigationManager nav
+@inject AprendizApiService AprendizApiService
+@inject FichaApiService FichaApiService
+@inject SesionService SesionService
+
+@if (menuAbiertoId != null)
+{
+	<div class="estado-overlay" @onclick="() => menuAbiertoId = null"></div>
+}
+
+<section class="aprendices">
+	<h1>Gestion de Aprendices</h1>
+	<p class="aprendices-subtitulo">Listado y seguimiento de los aprendices del programa ADSO.</p>
+
+	<div class="contenedor-aprendices">
+		<h3>Filtrar Aprendices</h3>
+
+		<div class="filtro">
+			<div class="campo-select">
+					<label>Ficha</label>
+					<select @bind="fichaSeleccionada">
+						<option value="">Seleccione una ficha</option>
+						@foreach (var f in fichas)
+						{
+							<option value="@f.NumeroFicha">@f.NumeroFicha</option>
+						}
+					</select>
+				</div>
+			<div class="campo">
+				<label>Numero Documento</label>
+				<input type="text" placeholder="1436985105" @bind="numeroDocumento" />
+			</div>
+		</div>
+
+		<div class="filtros-busqueda">
+			<div class="campo-busqueda">
+				<i class="bi bi-search"></i>
+				<input placeholder="Buscar Aprendiz" @bind="busqueda" />
+			</div>
+			<button @onclick="Filtrar">Buscar Aprendiz</button>
+		</div>
+
+		<div class="datos-aprendices">
+			<div class="data total">
+				<h1>Total Aprendices</h1>
+				<h2>@resumen.TotalAprendices</h2>
+			</div>
+			<div class="data activos">
+				<h1>Aprendices Activos</h1>
+				<h2>@resumen.TotalAprendicesActivos</h2>
+			</div>
+			<div class="data riesgos">
+				<h1>Aprendices En Riesgo</h1>
+				<h2>@resumen.TotalAprendicesEnRiesgo</h2>
+			</div>
+		</div>
+
+		@if (!string.IsNullOrEmpty(errorCambioEstado))
+		{
+			<div class="alerta-error">
+				<i class="bi bi-exclamation-triangle"></i> @errorCambioEstado
+			</div>
+		}
+
+		<div class="tabla-aprendices">
+			<div class="header-tabla">
+				<span>Nombre</span>
+				<span>Numero de Ficha</span>
+				<span>Estado</span>
+				<span>Asistencia</span>
+			</div>
+
+			@if (!aprendicesPaginados.Any())
+			{
+				<div class="fila-vacia">
+					<span>No hay aprendices registrados</span>
+				</div>
+			}
+			else
+			{
+				@foreach (var aprendiz in aprendicesPaginados)
+				{
+					<div class="fila @(aprendiz.Estado is "Cancelado" or "Retiro Voluntario" or "Trasladado" ? "fila-inactiva" : "")"
+						 @onclick='() => { if (aprendiz.Estado is not ("Cancelado" or "Retiro Voluntario" or "Trasladado")) nav.NavigateTo($"/aprendices/{aprendiz.IdAprendiz}/informe"); }'>
+						<div class="nombre">
+							<div class="avatar-mini">@Iniciales(aprendiz.Nombres)</div>
+							<div class="nombre-info">
+								<span class="nombre-texto">@aprendiz.Nombres</span>
+								<span class="nombre-sub">@aprendiz.NumeroDocumento</span>
+							</div>
+						</div>
+						<span class="ficha">@string.Join(", ", aprendiz.Ficha)</span>
+						<div class="estado-chip-wrapper" @key="aprendiz.IdAprendiz">
+							@if (aprendiz.Estado == "Trasladado")
+							{
+								<span class="estado-chip estado-trasladado estado-chip-final">
+									<span class="chip-dot"></span>
+									Trasladado
+								</span>
+							}
+							else
+							{
+								<button class="estado-chip @ObtenerClaseEstado(aprendiz.Estado)"
+										@onclick="() => ToggleMenu(aprendiz.IdAprendiz)"
+										@onclick:stopPropagation="true">
+									<span class="chip-dot"></span>
+									<span>@aprendiz.Estado</span>
+									<i class="bi @(menuAbiertoId == aprendiz.IdAprendiz ? "bi-chevron-up" : "bi-chevron-down") chip-arrow"></i>
+								</button>
+
+								@if (menuAbiertoId == aprendiz.IdAprendiz)
+								{
+									<div class="estado-menu" @onclick:stopPropagation="true">
+										@foreach (var estado in _estadosAsignables.Where(e => e != aprendiz.Estado))
+										{
+											var estadoLocal = estado;
+											<button class="estado-menu-item @ObtenerClaseEstado(estadoLocal)"
+													@onclick="async () => { menuAbiertoId = null; await CambiarEstado(aprendiz, estadoLocal); }">
+												<span class="menu-dot"></span>
+												<div class="menu-item-body">
+													<span class="menu-item-label">@estadoLocal</span>
+													@if (EsDestructivo(estadoLocal))
+													{
+														<span class="menu-item-warning">
+															<i class="bi bi-exclamation-triangle-fill"></i> Desactiva el acceso al sistema
+														</span>
+													}
+												</div>
+											</button>
+										}
+									</div>
+								}
+							}
+						</div>
+					@if (aprendiz.Estado == "En Formacion")
+					{
+						<span class="indicador-badge @(aprendiz.IndicadorAsistencia == "Al día" ? "indicador-al-dia" : "indicador-atrasado")"
+							  @onclick:stopPropagation="true"
+							  title="@aprendiz.PorcentajeAsistencia% de sesiones asistidas">
+							@aprendiz.IndicadorAsistencia
+						</span>
+					}
+					else
+					{
+						<span class="indicador-badge indicador-na" @onclick:stopPropagation="true">—</span>
+					}
+				</div>
+			}
+		}
+
+			<div class="paginacion">
+				<span class="info-registros">
+					@inicioRegistro - @finRegistro de @aprendices.Count aprendices
+				</span>
+				<div class="grupo-paginacion">
+					<button class="btn-pag" @onclick="PaginaAnterior" disabled="@(paginaActual == 1)">
+						<i class="bi bi-chevron-left"></i>
+					</button>
+					<span class="pagina-info">Página @paginaActual de @totalPaginas</span>
+					<button class="btn-pag" @onclick="PaginaSiguiente" disabled="@(paginaActual == totalPaginas)">
+						<i class="bi bi-chevron-right"></i>
+					</button>
+				</div>
+			</div>
+		</div>
+
+	</div>
+</section>
+
+@code {
+
+	string fichaSeleccionada = "";
+	string busqueda = "";
+	string numeroDocumento = "";
+	string? errorCambioEstado;
+
+	int? menuAbiertoId = null;
+	static readonly string[] _estadosAsignables = ["En Formacion", "Cancelado", "Retiro Voluntario"];
+
+	void ToggleMenu(int id) => menuAbiertoId = menuAbiertoId == id ? null : id;
+	bool EsDestructivo(string estado) => estado is "Cancelado" or "Retiro Voluntario";
+
+	List<AprendizListadoDTO> aprendices = [];
+	List<FichaDTO> fichas = [];
+	ResumenAprendizDto resumen = new();
+
+	int paginaActual = 1;
+	int registrosPorPagina = 6;
+
+	IEnumerable<AprendizListadoDTO> aprendicesPaginados =>
+		aprendices.Skip((paginaActual - 1) * registrosPorPagina).Take(registrosPorPagina);
+
+	int totalPaginas =>
+		(int)Math.Ceiling((double)aprendices.Count / registrosPorPagina);
+
+	int inicioRegistro => (paginaActual - 1) * registrosPorPagina + 1;
+	int finRegistro => Math.Min(paginaActual * registrosPorPagina, aprendices.Count);
+
+	protected override async Task OnInitializedAsync()
+	{
+		fichas = await FichaApiService.ObtenerFichasAsync() ?? [];
+		aprendices = await AprendizApiService.ObtenerAprendicesAsync() ?? [];
+		resumen = await AprendizApiService.ObtenerResumenAsync() ?? new();
+	}
+
+	private async Task Filtrar()
+	{
+		if (string.IsNullOrEmpty(fichaSeleccionada) &&
+			string.IsNullOrEmpty(busqueda) &&
+			string.IsNullOrEmpty(numeroDocumento))
+		{
+			aprendices = await AprendizApiService.ObtenerAprendicesAsync() ?? [];
+			resumen = await AprendizApiService.ObtenerResumenAsync();
+			StateHasChanged();
+			return;
+		}
+		aprendices = await AprendizApiService.FiltrarAprendicesAsync(fichaSeleccionada, numeroDocumento, busqueda) ?? [];
+		resumen = await AprendizApiService.ObtenerResumenAsync(fichaSeleccionada, numeroDocumento, busqueda);
+		paginaActual = 1;
+		StateHasChanged();
+	}
+
+	void PaginaAnterior()
+	{
+		if (paginaActual > 1) paginaActual--;
+	}
+
+	void PaginaSiguiente()
+	{
+		if (paginaActual < totalPaginas) paginaActual++;
+	}
+
+	private static string Iniciales(string nombre)
+	{
+		var partes = nombre.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+		return partes.Length >= 2
+			? $"{partes[0][0]}{partes[1][0]}".ToUpperInvariant()
+			: partes.Length == 1 ? partes[0][0].ToString().ToUpperInvariant()
+			: "?";
+	}
+
+	string ObtenerClaseEstado(string estado) => estado switch
+	{
+		"En Formacion"     => "estado-formacion",
+		"Retiro Voluntario"=> "estado-retiro",
+		"Cancelado"        => "estado-cancelado",
+		"Trasladado"       => "estado-trasladado",
+		_                  => "estado-default"
+	};
+
+	private async Task CambiarEstado(AprendizListadoDTO aprendiz, string nuevoEstado)
+	{
+		if (aprendiz.Estado == nuevoEstado)          return;
+		if (aprendiz.Estado   == "Trasladado")       return; // estado final: bloqueado
+		if (nuevoEstado       == "Trasladado")       return; // no asignable manualmente
+
+		var estadoAnterior = aprendiz.Estado;
+		aprendiz.Estado = nuevoEstado;        // actualización optimista
+		errorCambioEstado = null;
+		StateHasChanged();
+
+		var ok = await AprendizApiService.CambiarEstadoAsync(aprendiz.IdAprendiz, aprendiz.IdFicha, nuevoEstado);
+		if (!ok)
+		{
+			aprendiz.Estado = estadoAnterior; // revertir
+			errorCambioEstado = $"No se pudo actualizar el estado de {aprendiz.Nombres}.";
+		}
+		else
+		{
+			resumen = await AprendizApiService.ObtenerResumenAsync(fichaSeleccionada, numeroDocumento, busqueda) ?? new();
+		}
+		StateHasChanged();
+	}
+}

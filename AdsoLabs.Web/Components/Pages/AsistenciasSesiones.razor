@@ -1,0 +1,500 @@
+@page "/asistencias/sesiones/{IdFichaCompetenciaResultado:int}"
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@inject AsistenciaApiService asistenciaApi
+@inject NavigationManager    nav
+@using AdsoLabs.Application.DTOs.Asistencia
+@using AdsoLabs.Application.Common.Helpers
+@using System.Web
+
+<section class="sesiones-page">
+
+    <!-- Botón volver -->
+    <button class="btn-volver" @onclick="Volver">
+        <i class="bi bi-arrow-left"></i> Volver
+    </button>
+
+    <!-- Tarjeta de contexto del resultado -->
+    @if (resultado is not null)
+    {
+        <div class="resultado-card">
+            <div class="resultado-card-body">
+                <div class="resultado-identidad">
+                    <span class="tag-competencia">@resultado.NombreCompetencia</span>
+                    <h1 class="resultado-nombre">@resultado.NombreResultado</h1>
+                </div>
+                <div class="resultado-meta">
+                    <div class="meta-item">
+                        <i class="bi bi-person-fill"></i>
+                        <span class="meta-label">Instructor</span>
+                        <span class="meta-valor">@resultado.NombreInstructor</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="bi bi-calendar3"></i>
+                        <span class="meta-label">Período</span>
+                        <span class="meta-valor">@resultado.FechaInicio.ToString("dd/MM/yyyy") – @resultado.FechaFin.ToString("dd/MM/yyyy")</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="bi bi-clock"></i>
+                        <span class="meta-label">Horario</span>
+                        <span class="meta-valor">@resultado.HoraInicio.ToString("hh\\:mm") – @resultado.HoraFin.ToString("hh\\:mm")</span>
+                    </div>
+                </div>
+            </div>
+            @if (resultado.HorasProgramadas.HasValue)
+            {
+                var ic       = System.Globalization.CultureInfo.InvariantCulture;
+                var hProg    = resultado.HorasProgramadas.Value;
+                var hEjec    = resultado.HorasEjecutadas;
+                var pct      = hProg > 0 ? Math.Min(hEjec / hProg * 100, 100) : 0;
+                var pctStr   = pct.ToString("F1", ic);
+                var hEjecStr = hEjec.ToString("F1", ic);
+                var pctInt   = pct.ToString("F0", ic);
+                <div class="resultado-progreso">
+                    <div class="progreso-header">
+                        <div class="progreso-info">
+                            <i class="bi bi-hourglass-split"></i>
+                            <span class="progreso-etiqueta">Progreso de horas</span>
+                        </div>
+                        <div class="progreso-cifras">
+                            <span class="progreso-horas">@hEjecStr h</span>
+                            <span class="progreso-total">/ @hProg h</span>
+                            <span class="progreso-pct">@pctInt%</span>
+                        </div>
+                    </div>
+                    <div class="barra-track">
+                        <div class="barra-fill" style="width:@(pctStr)%"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Sección de sesiones (tarjeta unificada) -->
+    <div class="sesiones-seccion">
+
+        <!-- Cabecera: título + badge + botón nueva sesión -->
+        <div class="sesiones-seccion-header">
+            <div class="sesiones-titulo-wrap">
+                <span class="sesiones-titulo">Sesiones registradas</span>
+                @if (sesiones.Count > 0)
+                {
+                    <span class="badge-count">@sesiones.Count</span>
+                }
+            </div>
+            @if (!mostrarFormulario)
+            {
+                <button class="btn-nueva-sesion" @onclick="AbrirFormulario">
+                    <i class="bi bi-plus-lg"></i> Nueva sesión
+                </button>
+            }
+        </div>
+
+        <!-- Formulario nueva sesión -->
+        @if (mostrarFormulario)
+        {
+            <div class="formulario-sesion">
+                <h3><i class="bi bi-calendar-plus"></i> Nueva sesión</h3>
+                <div class="form-sesion">
+
+                    <!-- Calendario de selección de fecha -->
+                    <div class="form-campo">
+                        <label>Fecha</label>
+                        <div class="cal-fecha">
+                            <!-- Navegación mes -->
+                            <div class="cal-fecha-nav">
+                                <button class="cal-mes-btn" @onclick="CalAnterior">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <span>@NombresMes[calMes] @calAnio</span>
+                                <button class="cal-mes-btn" @onclick="CalSiguiente">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </div>
+                            <!-- Nombres de días -->
+                            <div class="cal-fecha-cols">
+                                <span>Lun</span><span>Mar</span><span>Mié</span>
+                                <span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
+                            </div>
+                            <!-- Grid de días -->
+                            <div class="cal-fecha-grid">
+                                @foreach (var dia in GetDiasMes())
+                                {
+                                    @if (dia is null)
+                                    {
+                                        <div class="cal-dia cal-dia-vacio"></div>
+                                    }
+                                    else
+                                    {
+                                        var d = dia.Value;
+                                        <div class="cal-dia @GetClaseDia(d)" @onclick="() => OnDiaClick(d)">
+                                            <span>@d.Day</span>
+                                            @if (TieneSesion(d))
+                                            {
+                                                <span class="cal-dot"></span>
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </div>
+                            <!-- Leyenda -->
+                            <div class="cal-fecha-leyenda">
+                                <span><span class="cal-dot-leyenda"></span> Sesión ya registrada</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hora inicio + Hora fin -->
+                    <div class="form-campos-hora">
+                        <div class="form-campo">
+                            <label>Hora inicio</label>
+                            <input type="time" @bind="nuevaHoraInicio" />
+                        </div>
+                        <div class="form-campo">
+                            <label>Hora fin</label>
+                            <input type="time" @bind="nuevaHoraFin" />
+                        </div>
+                    </div>
+
+                </div>
+
+                @if (!string.IsNullOrEmpty(advertenciaFecha))
+                {
+                    <div class="alerta @(esSabado ? "alerta-sabado" : "alerta-error")">
+                        <i class="bi @(esSabado ? "bi-exclamation-triangle" : "bi-x-circle")"></i>
+                        @advertenciaFecha
+                        @if (esSabado)
+                        {
+                            <label class="check-sabado">
+                                <input type="checkbox" @bind="confirmaSabado" />
+                                Confirmar sesión en sábado
+                            </label>
+                        }
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(mensajeForm))
+                {
+                    <div class="alerta @(exitoForm ? "alerta-ok" : "alerta-error")">
+                        <i class="bi @(exitoForm ? "bi-check-circle" : "bi-exclamation-circle")"></i>
+                        @mensajeForm
+                    </div>
+                }
+
+                <div class="form-acciones">
+                    <button class="btn-cancelar" @onclick="CerrarFormulario">Cancelar</button>
+                    <button class="btn-guardar" @onclick="CrearSesion" disabled="@creando">
+                        <i class="bi bi-check-lg"></i>
+                        @(creando ? "Creando..." : "Crear sesión")
+                    </button>
+                </div>
+            </div>
+        }
+
+        <!-- Cuerpo: spinner / vacío / tabla -->
+        @if (cargando)
+        {
+            <div class="estado-vacio">
+                <div class="spinner"></div>
+                <p>Cargando sesiones...</p>
+            </div>
+        }
+        else if (sesiones.Count == 0)
+        {
+            <div class="estado-vacio">
+                <i class="bi bi-calendar-x"></i>
+                <p>Aún no hay sesiones registradas.<br/>Crea la primera sesión con el botón de arriba.</p>
+            </div>
+        }
+        else
+        {
+            <div class="tabla-sesiones">
+                <div class="tabla-header">
+                    <span>Fecha</span>
+                    <span>Horario</span>
+                    <span>Estado</span>
+                    <span>Asistencia</span>
+                    <span></span>
+                </div>
+
+                @foreach (var s in sesiones)
+                {
+                    <div class="tabla-fila @(s.Estado == "Cancelada" ? "fila-cancelada" : "")">
+                        <span class="col-fecha">
+                            <strong>@s.Fecha.ToString("dd/MM")</strong>
+                            <small>@s.Fecha.ToString("yyyy")</small>
+                        </span>
+                        <span class="col-horario">
+                            @s.HoraInicio.ToString("hh\\:mm") – @s.HoraFin.ToString("hh\\:mm")
+                        </span>
+                        <span>
+                            <span class="badge-sesion @GetClaseSesion(s.Estado)">
+                                <i class="bi @GetIconoSesion(s.Estado)"></i>
+                                @s.Estado
+                            </span>
+                        </span>
+                        <span class="col-asistencia">
+                            @if (s.Estado != "Cancelada")
+                            {
+                                var ic       = System.Globalization.CultureInfo.InvariantCulture;
+                                var total    = s.TotalAprendices;
+                                var pctAsist = total > 0 ? ((double)s.Asistentes   / total * 100).ToString("F1", ic) : "0";
+                                var pctNoAs  = total > 0 ? ((double)s.NoAsistentes / total * 100).ToString("F1", ic) : "0";
+                                <div class="barra-wrap">
+                                    <div class="barra-apilada">
+                                        <div class="seg-asistentes"   style="width:@(pctAsist)%"  title="Presentes + Tarde: @s.Asistentes"></div>
+                                        <div class="seg-noasistentes" style="width:@(pctNoAs)%"   title="Ausentes + Justificados: @s.NoAsistentes"></div>
+                                    </div>
+                                    <div class="barra-chips">
+                                        <span class="chip-verde"><i class="bi bi-check-lg"></i> @s.Asistentes</span>
+                                        <span class="chip-rojo"><i class="bi bi-x-lg"></i> @s.NoAsistentes</span>
+                                        <span class="chip-total">/ @total</span>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-gris">No aplica</span>
+                            }
+                        </span>
+                        <span class="col-accion">
+                            @if (s.Estado != "Cancelada")
+                            {
+                                <button class="btn-registrar" @onclick="() => IrARegistro(s.IdSesion)">
+                                    <i class="bi @(s.Asistentes + s.NoAsistentes > 0 ? "bi-pencil-square" : "bi-clipboard-plus")"></i>
+                                    @(s.Asistentes + s.NoAsistentes > 0 ? "Editar" : "Registrar")
+                                </button>
+                            }
+                        </span>
+                    </div>
+                }
+            </div>
+        }
+
+    </div>
+
+</section>
+
+@code {
+    [Parameter] public int IdFichaCompetenciaResultado { get; set; }
+
+    [SupplyParameterFromQuery(Name = "ficha")]
+    public string? FichaQuery { get; set; }
+
+    void Volver()
+    {
+        var url = string.IsNullOrEmpty(FichaQuery)
+            ? "/asistencias"
+            : $"/asistencias?ficha={Uri.EscapeDataString(FichaQuery)}";
+        nav.NavigateTo(url);
+    }
+
+    ResultadoProgramadoDTO? resultado;
+    List<SesionDTO>         sesiones = [];
+    bool cargando = false;
+
+    // Formulario
+    bool      mostrarFormulario = false;
+    bool      creando           = false;
+    DateOnly? nuevaFecha;
+    TimeOnly  nuevaHoraInicio;
+    TimeOnly  nuevaHoraFin;
+    string    mensajeForm     = "";
+    bool      exitoForm       = false;
+    string?   advertenciaFecha = null;   // aviso de domingo / festivo / sábado
+    bool      esSabado         = false;  // true cuando la fecha seleccionada es sábado
+    bool      confirmaSabado   = false;  // checkbox de confirmación explícita para sábados
+
+    protected override async Task OnParametersSetAsync()
+    {
+        cargando = true;
+        resultado = await asistenciaApi.ObtenerResultadoProgramadoAsync(IdFichaCompetenciaResultado);
+        sesiones  = await asistenciaApi.ObtenerSesionesPorResultadoAsync(IdFichaCompetenciaResultado);
+        cargando  = false;
+    }
+
+    void AbrirFormulario()
+    {
+        mostrarFormulario  = true;
+        nuevaFecha         = DateOnly.FromDateTime(DateTime.Today);
+        nuevaHoraInicio    = resultado?.HoraInicio ?? new TimeOnly(8, 0);
+        nuevaHoraFin       = resultado?.HoraFin    ?? new TimeOnly(10, 0);
+        mensajeForm        = "";
+        exitoForm          = false;
+        advertenciaFecha   = null;
+        esSabado           = false;
+        confirmaSabado     = false;
+        calMes             = DateOnly.FromDateTime(DateTime.Today).Month;
+        calAnio            = DateOnly.FromDateTime(DateTime.Today).Year;
+        ValidarFecha(); // verificar si hoy ya es sábado / festivo
+    }
+
+    void ValidarFecha()
+    {
+        advertenciaFecha = null;
+        esSabado         = false;
+        confirmaSabado   = false;
+        if (!nuevaFecha.HasValue) return;
+
+        var f = nuevaFecha.Value;
+
+        if (f.DayOfWeek == DayOfWeek.Sunday)
+        {
+            advertenciaFecha = "No se pueden programar sesiones en domingo. Selecciona otro día.";
+            nuevaFecha       = null;
+            return;
+        }
+
+        if (FestivosColombiaHelper.EsFestivo(f))
+        {
+            advertenciaFecha = $"El {f:dd/MM/yyyy} es festivo en Colombia. Selecciona otro día.";
+            nuevaFecha       = null;
+            return;
+        }
+
+        if (f.DayOfWeek == DayOfWeek.Saturday)
+        {
+            esSabado         = true;
+            advertenciaFecha = "La fecha seleccionada es un sábado.";
+        }
+    }
+
+    void CerrarFormulario()
+    {
+        mostrarFormulario = false;
+        mensajeForm       = "";
+    }
+
+    async Task CrearSesion()
+    {
+        if (!nuevaFecha.HasValue)
+        {
+            mensajeForm = "Selecciona una fecha válida para la sesión.";
+            exitoForm   = false;
+            return;
+        }
+
+        if (esSabado && !confirmaSabado)
+        {
+            mensajeForm = "Marca la casilla para confirmar que la sesión es en sábado.";
+            exitoForm   = false;
+            return;
+        }
+
+        creando = true;
+        var dto = new CrearSesionDTO
+        {
+            IdFichaCompetenciaResultado = IdFichaCompetenciaResultado,
+            Fecha                       = nuevaFecha.Value,
+            HoraInicio                  = nuevaHoraInicio,
+            HoraFin                     = nuevaHoraFin
+        };
+
+        var resp = await asistenciaApi.CrearSesionAsync(dto);
+        exitoForm   = resp.esExitoso;
+        mensajeForm = resp.Mensaje;
+        creando     = false;
+
+        if (resp.esExitoso && resp.IdCreado.HasValue)
+        {
+            mostrarFormulario = false;
+            nav.NavigateTo($"/asistencias/registro/{IdFichaCompetenciaResultado}/{resp.IdCreado.Value}");
+        }
+    }
+
+    void IrARegistro(int idSesion)
+        => nav.NavigateTo($"/asistencias/registro/{IdFichaCompetenciaResultado}/{idSesion}");
+
+    string GetClaseSesion(string estado) => estado switch
+    {
+        "Abierta"    => "sesion-abierta",
+        "Finalizada" => "sesion-finalizada",
+        "Cancelada"  => "sesion-cancelada",
+        _            => ""
+    };
+
+    string GetIconoSesion(string estado) => estado switch
+    {
+        "Abierta"    => "bi-circle-fill",
+        "Finalizada" => "bi-check-circle-fill",
+        "Cancelada"  => "bi-x-circle-fill",
+        _            => "bi-dash-circle"
+    };
+
+    // ── Calendario de selección de fecha ──────────────────────────────────────
+
+    int calMes  = DateOnly.FromDateTime(DateTime.Today).Month;
+    int calAnio = DateOnly.FromDateTime(DateTime.Today).Year;
+
+    static readonly string[] NombresMes =
+    [
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ];
+
+    void CalAnterior()
+    {
+        if (calMes == 1) { calMes = 12; calAnio--; }
+        else             { calMes--; }
+    }
+
+    void CalSiguiente()
+    {
+        if (calMes == 12) { calMes = 1; calAnio++; }
+        else              { calMes++; }
+    }
+
+    void SeleccionarDia(DateOnly fecha)
+    {
+        nuevaFecha = fecha;
+        ValidarFecha();
+    }
+
+    void OnDiaClick(DateOnly fecha)
+    {
+        if (!EsDesactivado(fecha)) SeleccionarDia(fecha);
+    }
+
+    /// <summary>Devuelve los días del mes con nulls para las celdas vacías iniciales.</summary>
+    IEnumerable<DateOnly?> GetDiasMes()
+    {
+        var primero = new DateOnly(calAnio, calMes, 1);
+        int offset  = ((int)primero.DayOfWeek + 6) % 7; // Lunes = 0
+        int total   = DateTime.DaysInMonth(calAnio, calMes);
+
+        for (int i = 0; i < offset; i++) yield return null;
+        for (int d = 1; d <= total; d++) yield return new DateOnly(calAnio, calMes, d);
+    }
+
+    bool TieneSesion(DateOnly fecha) =>
+        sesiones.Any(s => s.Fecha == fecha);
+
+    bool EsDesactivado(DateOnly fecha)
+    {
+        if (resultado is null) return true;
+        if (fecha < resultado.FechaInicio || fecha > resultado.FechaFin) return true;
+        if (fecha.DayOfWeek == DayOfWeek.Sunday) return true;
+        if (FestivosColombiaHelper.EsFestivo(fecha)) return true;
+        return false;
+    }
+
+    string GetClaseDia(DateOnly fecha)
+    {
+        var cls = new System.Text.StringBuilder();
+
+        if (EsDesactivado(fecha))
+            cls.Append("cal-dia-desactivado");
+        else if (fecha.DayOfWeek == DayOfWeek.Saturday)
+            cls.Append("cal-dia-sabado");
+
+        if (nuevaFecha.HasValue && nuevaFecha.Value == fecha)
+            cls.Append(" cal-dia-seleccionado");
+        else if (fecha == DateOnly.FromDateTime(DateTime.Today))
+            cls.Append(" cal-dia-hoy");
+
+        if (TieneSesion(fecha))
+            cls.Append(" cal-dia-ocupado");
+
+        return cls.ToString().Trim();
+    }
+}

@@ -1,0 +1,488 @@
+@page "/asistencias"
+@* fichaActiva se recibe como query param para restaurar la selección al volver *@
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@inject FichaApiService      fichaApi
+@inject AsistenciaApiService asistenciaApi
+@inject NavigationManager    nav
+@inject AdsoLabs.Web.Services.SesionService SesionService
+@using AdsoLabs.Application.DTOs.Asistencia
+@using AdsoLabs.Application.DTOs.Fichas
+
+<section class="asistencias">
+    <div class="page-header">
+        <h1>Gestión de Asistencias</h1>
+        <p>Selecciona una ficha para ver su programación académica</p>
+    </div>
+
+    <div class="contenedor-principal">
+
+        <!-- ── Panel izquierdo: selector de ficha ─────────────────────────── -->
+        <div class="panel-fichas">
+            <div class="panel-titulo">
+                <i class="bi bi-journals"></i>
+                <span>Fichas asignadas</span>
+            </div>
+
+            @if (fichas.Count == 0)
+            {
+                <div class="estado-vacio">
+                    <i class="bi bi-inbox"></i>
+                    <p>No hay fichas disponibles</p>
+                </div>
+            }
+            else
+            {
+                <div class="lista-fichas">
+                    @foreach (var f in fichas)
+                    {
+                        <button class="ficha-card @(fichaSeleccionada == f.NumeroFicha ? "activa" : "")"
+                                @onclick="() => SeleccionarFicha(f.NumeroFicha)">
+                            <div class="ficha-numero">@f.NumeroFicha</div>
+                            <div class="ficha-nombre">@f.Nombre</div>
+                            <div class="ficha-estado @GetClaseEstado(f.Estado)">@f.Estado</div>
+                            <i class="bi bi-chevron-right ficha-flecha"></i>
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- ── Panel derecho: programación / calendario / lista ───────────── -->
+        <div class="panel-programacion">
+
+            @if (string.IsNullOrEmpty(fichaSeleccionada))
+            {
+                <div class="estado-vacio grande">
+                    <i class="bi bi-calendar2-week"></i>
+                    <p>Selecciona una ficha para ver su programación académica</p>
+                </div>
+            }
+            else if (cargando)
+            {
+                <div class="estado-vacio grande">
+                    <div class="spinner"></div>
+                    <p>Cargando programación...</p>
+                </div>
+            }
+            else
+            {
+                <!-- Cabecera con título + tabs -->
+                <div class="programacion-header">
+                    <div class="ph-titulo">
+                        <h2>Ficha <strong>@fichaSeleccionada</strong></h2>
+                        <span class="badge-total">@resultados.Count resultado(s) programado(s)</span>
+                    </div>
+                    @if (resultados.Count > 0)
+                    {
+                        <div class="vista-tabs">
+                            <button class="tab-btn @(vistaActiva == "semanal" ? "tab-activa" : "")"
+                                    @onclick='() => vistaActiva = "semanal"'>
+                                <i class="bi bi-calendar3-week"></i> Semanal
+                            </button>
+                            <button class="tab-btn @(vistaActiva == "lista" ? "tab-activa" : "")"
+                                    @onclick='() => vistaActiva = "lista"'>
+                                <i class="bi bi-list-ul"></i> Lista
+                            </button>
+                        </div>
+                    }
+                </div>
+
+                @if (resultados.Count == 0)
+                {
+                    <div class="estado-vacio">
+                        <i class="bi bi-calendar-x"></i>
+                        <p>No existen resultados programados actualmente para esta ficha.</p>
+                    </div>
+                }
+
+                <!-- ════════════════════════════════════════════
+                     VISTA SEMANAL — Calendario
+                ════════════════════════════════════════════ -->
+                else if (vistaActiva == "semanal")
+                {
+                    <div class="cal-wrapper">
+
+                        <!-- Navegación de semana -->
+                        <div class="cal-nav">
+                            <!-- Prev / rango / Next -->
+                            <button class="cal-nav-btn" @onclick="SemanaAnterior" title="Semana anterior">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <span class="cal-rango">
+                                @semanaActual.ToString("dd MMM", new System.Globalization.CultureInfo("es-CO"))
+                                –
+                                @semanaActual.AddDays(5).ToString("dd MMM yyyy", new System.Globalization.CultureInfo("es-CO"))
+                            </span>
+                            <button class="cal-nav-btn" @onclick="SemanaSiguiente" title="Semana siguiente">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+
+                            <div class="cal-nav-sep"></div>
+
+                            <!-- Salto directo a fecha -->
+                            <label class="cal-ir-label">Ir a:</label>
+                            <input class="cal-fecha-input"
+                                   type="date"
+                                   value="@_fechaInputVal"
+                                   @onchange="OnFechaChanged"
+                                   title="Selecciona una fecha para ir a esa semana" />
+
+                            <!-- Hoy / Primera clase -->
+                            <button class="cal-btn-hoy" @onclick="IrAHoy">Hoy</button>
+                            @if (resultados.Count > 0)
+                            {
+                                <button class="cal-btn-primera" @onclick="IrAPrimeraClase" title="Ir a la primera clase programada">
+                                    <i class="bi bi-skip-start-fill"></i> Primera clase
+                                </button>
+                            }
+                        </div>
+
+                        <!-- Cabecera + Grid envueltos para scroll horizontal sincronizado -->
+                        <div class="cal-x-scroll">
+
+                        <!-- Cabecera de días -->
+                        <div class="cal-dias-header">
+                            <div class="cal-eje-ph"></div>
+                            @foreach (var dia in DiasSemanla)
+                            {
+                                var esHoy = dia == DateOnly.FromDateTime(DateTime.Today);
+                                <div class="cal-dia-cab @(esHoy ? "cal-dia-cab-hoy" : "")">
+                                    <span class="cal-dia-nombre">@NombreDia(dia.DayOfWeek)</span>
+                                    <span class="cal-dia-num @(esHoy ? "cal-dia-num-hoy" : "")">@dia.Day</span>
+                                </div>
+                            }
+                        </div>
+
+                        <!-- Grid del calendario (scrollable vertical) -->
+                        <div class="cal-scroll">
+                            <div class="cal-grid">
+
+                                <!-- Eje de horas -->
+                                <div class="cal-eje" style="height:@(HORAS * PX_HORA)px">
+                                    @for (int h = HORA_BASE; h < HORA_BASE + HORAS; h++)
+                                    {
+                                        <div class="cal-hora-lbl" style="top:@((h - HORA_BASE) * PX_HORA)px">
+                                            @h:00
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Columnas de días -->
+                                @foreach (var dia in DiasSemanla)
+                                {
+                                    var bloques = GetBloquesDia(dia);
+                                    var esHoy   = dia == DateOnly.FromDateTime(DateTime.Today);
+                                    <div class="cal-col @(esHoy ? "cal-col-hoy" : "")"
+                                         style="height:@(HORAS * PX_HORA)px">
+
+                                        <!-- Líneas de hora (fondo) -->
+                                        @for (int h = 0; h < HORAS; h++)
+                                        {
+                                            <div class="cal-linea" style="top:@(h * PX_HORA)px"></div>
+                                        }
+
+                                        <!-- Bloques de resultados con carriles para evitar solapamiento -->
+                                        @foreach (var b in bloques)
+                                        {
+                                            var r        = b.Dato;
+                                            var bg       = GetColor(r.NombreCompetencia);
+                                            var top      = CalcTop(r.HoraInicio);
+                                            var hgt      = CalcHeight(r.HoraInicio, r.HoraFin);
+                                            var tam      = ClaseBloque(hgt);
+                                            var ic       = System.Globalization.CultureInfo.InvariantCulture;
+                                            var leftPct  = ((double)b.Carril / b.TotalCarriles * 100).ToString("F2", ic);
+                                            var widthPct = (100.0 / b.TotalCarriles).ToString("F2", ic);
+                                            <div class="cal-bloque @tam"
+                                                 style="top:@(top)px; height:@(hgt)px; background:@bg;
+                                                        left:calc(@(leftPct)% + 3px); width:calc(@(widthPct)% - 6px)"
+                                                 @onclick="() => IrASesiones(r)"
+                                                 title="@r.NombreResultado — @r.NombreInstructor">
+                                                <span class="blq-nombre">@r.NombreResultado</span>
+                                                <span class="blq-hora">
+                                                    @r.HoraInicio.ToString("hh\\:mm") – @r.HoraFin.ToString("hh\\:mm")
+                                                </span>
+                                                <span class="blq-inst">@r.NombreInstructor</span>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        </div> <!-- /cal-x-scroll -->
+
+                        <!-- Leyenda de competencias -->
+                        @if (resultados.Select(r => r.NombreCompetencia).Distinct().Count() > 1)
+                        {
+                            <div class="cal-leyenda">
+                                @foreach (var comp in resultados.Select(r => r.NombreCompetencia).Distinct())
+                                {
+                                    <span class="leyenda-item">
+                                        <span class="leyenda-dot" style="background:@GetColor(comp)"></span>
+                                        @comp
+                                    </span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                <!-- ════════════════════════════════════════════
+                     VISTA DE LISTA — Gestión
+                ════════════════════════════════════════════ -->
+                else
+                {
+                    <div class="tabla-lista">
+                        <div class="tabla-lista-head">
+                            <span>Competencia</span>
+                            <span>Resultado de aprendizaje</span>
+                            <span>Instructor</span>
+                            <span>Período</span>
+                            <span>Horario</span>
+                            <span>Estado</span>
+                            <span></span>
+                        </div>
+
+                        @foreach (var r in resultados)
+                        {
+                            <div class="tabla-lista-fila">
+                                <span class="col-comp">
+                                    <span class="comp-dot" style="background:@GetColor(r.NombreCompetencia)"></span>
+                                    @r.NombreCompetencia
+                                </span>
+                                <span class="col-resultado">@r.NombreResultado</span>
+                                <span class="col-inst">
+                                    <i class="bi bi-person-fill"></i> @r.NombreInstructor
+                                </span>
+                                <span class="col-periodo">
+                                    @r.FechaInicio.ToString("dd/MM") – @r.FechaFin.ToString("dd/MM/yy")
+                                </span>
+                                <span class="col-horario">
+                                    @r.HoraInicio.ToString("hh\\:mm") – @r.HoraFin.ToString("hh\\:mm")
+                                </span>
+                                <span class="col-estado">
+                                    <span class="badge-estado @GetClaseResultado(r.EstadoResultado)">
+                                        @r.EstadoResultado
+                                    </span>
+                                </span>
+                                <span class="col-accion">
+                                    <button class="btn-gestionar" @onclick="() => IrASesiones(r)">
+                                        <i class="bi bi-calendar3-event"></i> Sesiones
+                                    </button>
+                                </span>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+
+    </div>
+</section>
+
+@code {
+    // ── Parámetro de query para restaurar ficha al volver ────────────────────
+    [SupplyParameterFromQuery(Name = "ficha")]
+    public string? FichaQuery { get; set; }
+
+    // ── Estado de datos ──────────────────────────────────────────────────────
+    string fichaSeleccionada = "";
+    bool   cargando          = false;
+
+    List<FichaDTO>               fichas    = [];
+    List<ResultadoProgramadoDTO> resultados = [];
+
+    // ── Vista activa ─────────────────────────────────────────────────────────
+    string vistaActiva = "semanal";
+
+    // ── Navegación semanal ───────────────────────────────────────────────────
+    DateOnly semanaActual = GetLunes(DateOnly.FromDateTime(DateTime.Today));
+
+    // Valor independiente del input de fecha:
+    // Se actualiza desde los botones de navegación, pero NO desde semanaActual,
+    // para que el usuario pueda editar mes/año sin que Blazor le sobreescriba el campo.
+    string _fechaInputVal = GetLunes(DateOnly.FromDateTime(DateTime.Today))
+                                .ToString("yyyy-MM-dd");
+
+    static DateOnly GetLunes(DateOnly d)
+    {
+        int off = (int)d.DayOfWeek - (int)DayOfWeek.Monday;
+        if (off < 0) off += 7;
+        return d.AddDays(-off);
+    }
+
+    IEnumerable<DateOnly> DiasSemanla =>
+        Enumerable.Range(0, 6).Select(i => semanaActual.AddDays(i));
+
+    /// <summary>Bloque del calendario con asignación de carril para evitar solapamientos.</summary>
+    record BloqueCalendario(ResultadoProgramadoDTO Dato, int Carril, int TotalCarriles);
+
+    /// <summary>
+    /// Devuelve los bloques del día con carriles asignados.
+    /// Cuando dos bloques se solapan en horario, se dividen horizontalmente
+    /// la columna en lugar de apilarse visualmente.
+    /// </summary>
+    List<BloqueCalendario> GetBloquesDia(DateOnly dia)
+    {
+        var items = resultados
+            .Where(r => r.FechaInicio <= dia && dia <= r.FechaFin)
+            .OrderBy(r => r.HoraInicio)
+            .ThenByDescending(r => r.HoraFin)
+            .ToList();
+
+        if (items.Count == 0) return [];
+
+        // Greedy lane assignment: asigna el primer carril libre cuyo último
+        // bloque termine antes o exactamente en el inicio del nuevo bloque.
+        var carrilesFin = new List<TimeOnly>(); // hora de fin del último bloque de cada carril
+        var asignados   = new int[items.Count];
+
+        for (int i = 0; i < items.Count; i++)
+        {
+            int carril = -1;
+            for (int c = 0; c < carrilesFin.Count; c++)
+            {
+                if (carrilesFin[c] <= items[i].HoraInicio)
+                {
+                    carril        = c;
+                    carrilesFin[c] = items[i].HoraFin;
+                    break;
+                }
+            }
+            if (carril < 0)
+            {
+                carril = carrilesFin.Count;
+                carrilesFin.Add(items[i].HoraFin);
+            }
+            asignados[i] = carril;
+        }
+
+        int total = carrilesFin.Count;
+        return items.Select((r, i) => new BloqueCalendario(r, asignados[i], total)).ToList();
+    }
+
+    void SemanaAnterior()
+    {
+        semanaActual   = semanaActual.AddDays(-7);
+        _fechaInputVal = semanaActual.ToString("yyyy-MM-dd");
+    }
+
+    void SemanaSiguiente()
+    {
+        semanaActual   = semanaActual.AddDays(7);
+        _fechaInputVal = semanaActual.ToString("yyyy-MM-dd");
+    }
+
+    void IrAHoy()
+    {
+        semanaActual   = GetLunes(DateOnly.FromDateTime(DateTime.Today));
+        _fechaInputVal = semanaActual.ToString("yyyy-MM-dd");
+    }
+
+    void IrAPrimeraClase()
+    {
+        if (resultados.Count == 0) return;
+        semanaActual   = GetLunes(resultados.Min(r => r.FechaInicio));
+        _fechaInputVal = semanaActual.ToString("yyyy-MM-dd");
+    }
+
+    /// <summary>
+    /// Salto directo al escribir una fecha.
+    /// _fechaInputVal se actualiza con lo que el usuario escribió (sin normalizar a lunes),
+    /// para que el campo no cambie mientras se edita mes o año.
+    /// semanaActual se actualiza solo cuando la fecha resultante es válida (año 2000-2099).
+    /// </summary>
+    void OnFechaChanged(ChangeEventArgs e)
+    {
+        var str = e.Value?.ToString() ?? "";
+        _fechaInputVal = str;   // preservar exactamente lo que el usuario escribió
+        if (DateTime.TryParse(str, out var dt) && dt.Year >= 2000 && dt.Year <= 2099)
+            semanaActual = GetLunes(DateOnly.FromDateTime(dt));
+    }
+
+    // ── Posicionamiento del calendario ───────────────────────────────────────
+    const int HORA_BASE = 6;    // 06:00
+    const int PX_HORA   = 96;   // píxeles por hora
+    const int HORAS     = 16;   // 06:00 → 22:00
+
+    static int CalcTop(TimeOnly h) =>
+        (int)((h.Hour + h.Minute / 60.0 - HORA_BASE) * PX_HORA);
+
+    static int CalcHeight(TimeOnly h1, TimeOnly h2) =>
+        Math.Max(50, (int)((h2 - h1).TotalHours * PX_HORA));
+
+    // Clase CSS según altura del bloque: xs(<80), sm(80-149), lg(150+)
+    static string ClaseBloque(int hgt) =>
+        hgt < 80  ? "blq-xs" :
+        hgt < 150 ? "blq-sm" : "blq-lg";
+
+    // ── Paleta de colores por competencia ────────────────────────────────────
+    static readonly string[] Paleta =
+    [
+        "#4f46e5", "#0ea5e9", "#10b981", "#f59e0b",
+        "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6"
+    ];
+
+    string GetColor(string nombre)
+    {
+        int idx = Math.Abs(nombre.GetHashCode()) % Paleta.Length;
+        return Paleta[idx];
+    }
+
+    static string NombreDia(DayOfWeek d) => d switch
+    {
+        DayOfWeek.Monday    => "Lun",
+        DayOfWeek.Tuesday   => "Mar",
+        DayOfWeek.Wednesday => "Mié",
+        DayOfWeek.Thursday  => "Jue",
+        DayOfWeek.Friday    => "Vie",
+        DayOfWeek.Saturday  => "Sáb",
+        DayOfWeek.Sunday    => "Dom",
+        _                   => ""
+    };
+
+    // ── Ciclo de vida ────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        // Admins ven todas las fichas (idUsuario=0 omite el filtro por instructor).
+        fichas = await fichaApi.ObtenerFichasAsync(SesionService.EsInstructor ? SesionService.IdUsuario : 0);
+
+        // Restaurar ficha si se volvió desde la página de sesiones
+        if (!string.IsNullOrEmpty(FichaQuery))
+            await SeleccionarFicha(FichaQuery);
+    }
+
+    async Task SeleccionarFicha(string numeroFicha)
+    {
+        fichaSeleccionada = numeroFicha;
+        resultados        = [];
+        cargando          = true;
+        resultados = await asistenciaApi.ObtenerResultadosProgramadosAsync(numeroFicha);
+
+        // Posicionar en la semana del inicio más antiguo de la programación.
+        // Si no hay resultados, caer al lunes de la semana actual.
+        semanaActual   = resultados.Count > 0
+            ? GetLunes(resultados.Min(r => r.FechaInicio))
+            : GetLunes(DateOnly.FromDateTime(DateTime.Today));
+        _fechaInputVal = semanaActual.ToString("yyyy-MM-dd");
+
+        cargando = false;
+    }
+
+    void IrASesiones(ResultadoProgramadoDTO r)
+        => nav.NavigateTo($"/asistencias/sesiones/{r.IdFichaCompetenciaResultado}?ficha={Uri.EscapeDataString(fichaSeleccionada)}");
+
+    string GetClaseEstado(string estado) => estado switch
+    {
+        "Activa"     => "estado-activa",
+        "Finalizada" => "estado-finalizada",
+        _            => "estado-otro"
+    };
+
+    string GetClaseResultado(string estado) => estado switch
+    {
+        "Completado" => "badge-completado",
+        _            => "badge-programado"
+    };
+}

@@ -1,0 +1,553 @@
+body {
+    background-color: #F4F6FB;
+}
+
+/* ── Encabezado ──────────────────────────────────────────────── */
+.competencias {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 2rem;
+}
+
+.competencias h1 {
+    font-size: 2rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    color: #1E293B;
+    margin-top: 2rem;
+    margin-bottom: .2rem;
+}
+
+.competencias h2 {
+    font-size: 0.9rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    color: #64748B;
+    margin-bottom: 0.25rem;
+}
+
+.competencias-subtitulo {
+    font-size: .9rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    color: #94A3B8;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+/* ── Contenedor principal ────────────────────────────────────── */
+.contenedor-competencias {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: white;
+    box-shadow: 0 2px 20px rgba(59,130,246,.07);
+    border: 1px solid #F1F5F9;
+    border-radius: 20px;
+    padding: 1.5rem;
+    gap: 1.25rem;
+    margin-top: 0.75rem;
+    margin-bottom: 4rem;
+}
+
+.contenedor-competencias h3 {
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #1E293B;
+    margin: 0;
+}
+
+/* ── Fila de filtro ──────────────────────────────────────────── */
+.filtro {
+    display: flex;
+    flex-direction: row;
+    gap: 0.875rem;
+}
+
+.filtro button {
+    padding: 0 1.5rem;
+    height: 46px;
+    border-radius: 10px;
+    border: none;
+    background: #4F46E5;
+    color: white;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.filtro button:hover {
+    background: #4338CA;
+}
+
+.campo-select {
+    display: flex;
+    align-items: center;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    background: #F8FAFC;
+    flex: 1;
+    position: relative;
+}
+
+.campo-select label {
+    color: #94A3B8;
+    margin-right: 0.75rem;
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.campo-select ::deep select {
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #1E293B;
+    appearance: none;
+}
+
+.campo-select::after {
+    content: "▼";
+    position: absolute;
+    right: 14px;
+    font-size: 0.6875rem;
+    color: #94A3B8;
+    pointer-events: none;
+}
+
+/* ── KPIs ────────────────────────────────────────────────────── */
+.datos-competencias {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+}
+
+.data {
+    display: flex;
+    flex: 1;
+    height: 88px;
+    justify-content: space-between;
+    align-items: center;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+
+.data h1 {
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    max-width: 110px;
+}
+
+.data h2 {
+    font-size: 2rem;
+    color: #3B82F6;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+}
+
+.activos h2 {
+    color: #3B82F6;
+}
+
+.riesgos h2 {
+    color: #EF4444;
+}
+
+/* ── Título medio (nombre y código de competencia) ───────────── */
+.title-medium {
+    margin-top: 0.25rem;
+}
+
+.title-medium h6 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #94A3B8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.info-competencias {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.info-competencias h4 {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 1.0625rem;
+    color: #1E293B;
+    margin: 0;
+}
+
+.num-ficha {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 90px;
+    padding: 4px 14px;
+    height: 32px;
+    background: #E4E7EC;
+    border-radius: 20px;
+}
+
+.num-ficha h5 {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #374151;
+    margin: 0;
+}
+
+/* ── Contenedor de cards ─────────────────────────────────────── */
+.contenedor {
+    display: flex;
+    gap: 1.25rem;
+}
+
+.instructores {
+    width: 320px;
+    flex-shrink: 0;
+}
+
+.fichas {
+    flex: 1;
+    min-width: 0;
+}
+
+.card {
+    background: #F8FAFC;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    padding: 1.25rem;
+}
+
+/* ── Card header ─────────────────────────────────────────────── */
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: -1.25rem -1.25rem 0.875rem;
+    padding: 0.875rem 1.25rem;
+    background: white;
+    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.card-header span {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: #1E293B;
+}
+
+.titulo {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+}
+
+.titulo span {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #1E293B;
+}
+
+.titulo small {
+    font-size: 0.75rem;
+    color: #94A3B8;
+    font-weight: 400;
+}
+
+.bi-journal-bookmark,
+.bi-people {
+    font-size: 1.125rem;
+    color: #3B82F6;
+}
+
+/* ── Badge conteo fichas activas ─────────────────────────────── */
+.badge {
+    background: #DBEAFE;
+    color: #1D4ED8;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* ── Lista de instructores ───────────────────────────────────── */
+.lista-instructores {
+    max-height: 400px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.lista-instructores::-webkit-scrollbar {
+    width: 5px;
+}
+
+.lista-instructores::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 10px;
+}
+
+.instructor-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    background: white;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+}
+
+.instructor-item:hover {
+    background: #F8F7FF;
+}
+
+.instructor-seleccionado {
+    background: #EFF6FF !important;
+    border-color: #3B82F6 !important;
+    box-shadow: 0 0 0 2px rgba(59,130,246,.2);
+}
+
+.instructor-seleccionado .nombre {
+    color: #1D4ED8;
+}
+
+.avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4F46E5, #3B82F6);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: .5px;
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.nombre {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #1E293B;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.rol {
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: #64748B;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ficha-count {
+    margin-left: auto;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #64748B;
+    background: #E4E7EC;
+    border-radius: 20px;
+    padding: 2px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.instructor-seleccionado .ficha-count {
+    background: #DBEAFE;
+    color: #1D4ED8;
+}
+
+/* ── Tabla de fichas ─────────────────────────────────────────── */
+.tabla {
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.tabla-header,
+.tabla-header-fichas {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    background: #F8FAFC;
+    color: #64748B;
+    padding: 10px 14px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    justify-items: center;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.tabla-body {
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.fila-tabla,
+.fila-tabla-fichas {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 10px 14px;
+    border-bottom: 1px solid #F1F5F9;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: #374151;
+    justify-items: center;
+    align-items: center;
+    transition: background .12s ease;
+}
+
+.fila-tabla:last-child,
+.fila-tabla-fichas:last-child {
+    border-bottom: none;
+}
+
+.fila-tabla:hover,
+.fila-tabla-fichas:hover {
+    background: #F8F7FF;
+}
+
+.fila-clausurada {
+    background: #F9FAFB;
+    opacity: 0.7;
+}
+
+.fila-vacia {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    color: #94A3B8;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* ── Badges de estado de competencia ─────────────────────────── */
+.estado-comp-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.6875rem;
+    font-weight: 600;
+}
+
+.estado-pendiente  { background: #FEF3C7; color: #92400E; }
+.estado-programada { background: #DBEAFE; color: #1D4ED8; }
+.estado-en-curso   { background: #DCFCE7; color: #15803D; }
+.estado-vista      { background: #F3F4F6; color: #6B7280; }
+
+/* ── Filtro activo ────────────────────────────────────────────── */
+.filtro-activo-label {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #1D4ED8;
+    margin-left: 4px;
+}
+
+.btn-ver-todas {
+    margin-left: 8px;
+    background: none;
+    border: 1px solid #93C5FD;
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #1D4ED8;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.btn-ver-todas:hover {
+    background: #EFF6FF;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+    .contenedor {
+        flex-direction: column;
+    }
+
+    .instructores {
+        width: 100%;
+    }
+
+    .lista-instructores {
+        max-height: 250px;
+    }
+
+    .datos-competencias {
+        flex-wrap: wrap;
+    }
+
+    .data {
+        min-width: calc(50% - 0.5rem);
+    }
+}
+
+@media (max-width: 768px) {
+    .filtro {
+        flex-direction: column;
+    }
+
+    .filtro button {
+        width: 100%;
+    }
+
+    .titulo small {
+        display: none;
+    }
+}

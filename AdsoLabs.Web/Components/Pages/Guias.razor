@@ -1,0 +1,308 @@
+﻿@page "/guias"
+@using System.Diagnostics
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@inject NavigationManager nav
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+
+<section class="guias">
+	<h1>Gestion de Guias</h1>
+	<h2>Gestion y planeacion de guias academicas</h2>
+
+	<div class="contenedor-guias">
+
+		<!-- Buscador -->
+		<div class="campo-busqueda">
+			<i class="bi bi-search"></i>
+			<input placeholder="Buscar guías, planes concertados..." @bind="busqueda" />
+		</div>
+
+		<!-- Layout principal -->
+		<div class="layout">
+
+			<!-- Sidebar -->
+			<div class="sidebar">
+				<h3><i class="bi bi-list-check"></i> Categorías</h3>
+				
+				<button class="@GetClase("Todas")"
+						@onclick='() => Seleccionar("Todas")'>
+					Todas <i class="bi bi-bookmark"></i>
+				</button>
+				<button class="@GetClase("Guias")" @onclick='() => Seleccionar("Guias")'>Guías de Aprendizaje <i class="bi bi-file-earmark-text"></i></button>
+				<button class="@GetClase("Plan")" @onclick='() => Seleccionar("Plan")'>Plan Concertado <i class="bi bi-filetype-doc"></i></button>
+				<button class="@GetClase("Mejoramiento")" @onclick='() => Seleccionar("Mejoramiento")'>Plan de Mejoramiento <i class="bi bi-person-vcard"></i></button>
+
+					<button class="download">Descargas <i class="bi bi-cloud-download"></i></button>
+				
+			</div>
+
+			<!-- Contenido -->
+			<div class="content">
+				@foreach (var doc in documentos)
+				{
+					<div class="card">
+						<div class="icon-container">
+							<i class="bi bi-file-text"></i>
+						</div>
+
+						<div class="info">
+							<h4>@doc.Titulo</h4>
+							<p>@doc.Tamano - @doc.Tipo</p>
+						</div>
+
+						<div class="user">
+							<span>@doc.Autor</span>
+							<small>@doc.Fecha</small>
+						</div>
+						<i class="bi bi-person-circle"></i>
+					</div>
+				}
+			</div>
+
+		</div>
+		<div class="end-button">
+			<button class="cargar-archivo" @onclick="AbrirModal">
+				Cargar Archivo
+			</button>
+		</div>
+	</div>
+
+	@if (mostrarModal)
+	{
+		<div class="modal-overlay" @onclick="CerrarModal">
+			<div class="modal-box" @onclick:stopPropagation="true">
+
+				<div class="modal-header">
+					<h3>Subir Archivo</h3>
+					<button class="cerrar" @onclick="CerrarModal">✖</button>
+				</div>
+
+				<div class="modal-body">
+
+					<div class="select-container">
+						<select @bind="categoriaSeleccionadaModal">
+							<option value="">Categoria de Archivo</option>
+							<option value="Guias">Guías</option>
+							<option value="Plan">Plan Concertado</option>
+							<option value="Mejoramiento">Mejoramiento</option>
+						</select>
+					</div>
+
+					<input type="text" value="@nombreArchivo" placeholder="Guia_de_Aprendizaje_DataBase.docx" readonly />
+					<label class="boton-icono @(string.IsNullOrEmpty(categoriaSeleccionadaModal) ? "disabled" : "")">
+						<i class="bi bi-upload"></i>
+						<InputFile OnChange="OnFileSelected" hidden disabled="@string.IsNullOrEmpty(categoriaSeleccionadaModal)" />
+					</label>
+
+					<div class="preview">
+						@if (!string.IsNullOrEmpty(previewUrl))
+						{
+							<img src="@previewUrl" style="max-height:100%; max-width:100%;" />
+							<p>@nombreArchivo</p>
+						}
+						else if (!string.IsNullOrEmpty(nombreArchivo))
+						{
+							<i class="bi @icono"></i>
+							<p>@nombreArchivo</p>
+						}
+						else
+						{
+							<i class="bi bi-file-earmark"></i>
+							<p>No hay vista previa disponible</p>
+						}
+					</div>
+
+				</div>
+
+				<div class="modal-footer">
+					<button class="guardar">Guardar Archivo</button>
+				</div>
+
+			</div>
+		</div>
+	}
+</section>
+
+
+@code {
+
+	string busqueda;
+	string categoriaSeleccionada = "Todas";
+	bool mostrarModal = false;
+	IBrowserFile archivoSeleccionado;
+	string nombreArchivo = "";
+	string previewUrl = "";
+	string icono = "bi-file-earmark"; // default
+	string categoriaSeleccionadaModal = "";
+
+	async Task OnFileSelected(InputFileChangeEventArgs e)
+	{
+		archivoSeleccionado = e.File;
+		nombreArchivo = archivoSeleccionado.Name;
+
+		var tipo = archivoSeleccionado.ContentType;
+
+		// 📌 Si es imagen → preview optimizado
+		if (tipo.StartsWith("image/"))
+		{
+			// 🔥 reduce la imagen automáticamente (evita crash)
+			var imagenReducida = await archivoSeleccionado.RequestImageFileAsync(
+				"image/png", 150, 150);
+
+			var buffer = new byte[imagenReducida.Size];
+			await imagenReducida.OpenReadStream().ReadAsync(buffer);
+
+			previewUrl = $"data:image/png;base64,{Convert.ToBase64String(buffer)}";
+		}
+		else
+		{
+			previewUrl = "";
+		}
+
+		// 📌 Íconos
+		if (nombreArchivo.EndsWith(".pdf"))
+			icono = "bi-file-earmark-pdf";
+		else if (nombreArchivo.EndsWith(".doc") || nombreArchivo.EndsWith(".docx"))
+			icono = "bi-file-earmark-word";
+		else if (nombreArchivo.EndsWith(".xls") || nombreArchivo.EndsWith(".xlsx"))
+			icono = "bi-file-earmark-excel";
+		else if (tipo.StartsWith("image/"))
+			icono = "bi-image";
+		else
+			icono = "bi-file-earmark";
+	}
+
+	void AbrirModal()
+	{
+		mostrarModal = true;
+	}
+
+	void CerrarModal()
+	{
+		mostrarModal = false;
+	}
+
+	void Seleccionar(string categoria)
+	{
+		categoriaSeleccionada = categoria;
+	}
+
+	string GetClase(string categoria)
+	{
+		return categoriaSeleccionada == categoria ? "active" : "";
+	}
+
+	public class Documento
+	{
+		public string Titulo { get; set; }
+		public string Tamano { get; set; }
+		public string Tipo { get; set; }
+		public string Autor { get; set; }
+		public string Fecha { get; set; }
+	}
+
+	List<Documento> documentos = new()
+	{
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		},
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		},
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		},
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		},
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		},
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		},
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		},
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		},
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		},
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		},
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		},
+		new Documento {
+			Titulo = "Guía de Aprendizaje - Analítica de Datos",
+			Tamano = "610KB",
+			Tipo = "PDF",
+			Autor = "Yasser Pushaina",
+			Fecha = "24 - Abril - 26"
+		}
+	};
+
+	string GetFiltros(string filtros)
+	{
+		return filtros switch
+		{
+			"Todas" => "todas",
+			"Guias de Aprendizaje" => "guias-aprendizaje",
+			"Plan Concertado" => "plan-concertado",
+			"Plan de Mejoramiento" => "plan-mejoramiento",
+			"Descargas" => "descargas",
+			_ => ""
+		};
+	}
+	
+}

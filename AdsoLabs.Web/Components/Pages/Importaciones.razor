@@ -1,0 +1,789 @@
+@page "/importaciones"
+@attribute [Authorize(Roles = "Administrador")]
+@rendermode InteractiveServer
+@using AdsoLabs.Application.DTOs.Importacion
+@using AdsoLabs.Application.DTOs.Fichas
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@inject FichaStateService FichaStateService
+@inject ImportacionApiService ImportacionApi
+@inject FichaApiService FichaApi
+@inject IJSRuntime JS
+
+
+<PageTitle>Importaciones</PageTitle>
+
+<section class="importaciones">
+    <div>
+        <h1>Importaciones</h1>
+        <p class="if-subtitulo">Importa fichas, aprendices y reportes de juicios evaluativos desde SOFIA Plus.</p>
+
+    </div>
+
+    <div class="paneles-duo">
+
+    @* ── Panel: Importar Fichas ─────────────────────────────────────────── *@
+    <div class="panel-importar">
+        <div class="panel-header">
+            <i class="bi bi-file-earmark-plus"></i>
+            <span>Importar Fichas</span>
+            <button class="btn-ver-estructura" @onclick="() => modalEstructuraAbierto = true"
+                    title="Ver estructura de la plantilla">
+                <i class="bi bi-question-circle"></i> Ver plantilla
+            </button>
+        </div>
+
+        <p class="if-descripcion">
+            Carga fichas nuevas usando la plantilla oficial. Las fichas existentes se
+            actualizan (Nombre y Fechas). Al crear una ficha, el sistema vincula
+            automáticamente todas las competencias activas del programa.
+        </p>
+
+        <div class="zona-carga">
+            <label class="btn-seleccionar" for="inputArchivoFichas">
+                <i class="bi bi-file-earmark-spreadsheet"></i>
+                @(archivoFichas is null ? "Seleccionar plantilla completada (.xlsx)" : archivoFichas.Name)
+            </label>
+            <InputFile id="inputArchivoFichas" accept=".xlsx"
+                       OnChange="SeleccionarArchivoFichas" class="d-none" />
+
+            <button class="btn-importar" @onclick="ImportarFichas"
+                    disabled="@(archivoFichas is null || importandoFichas)">
+                @if (importandoFichas)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                    <span>Importando...</span>
+                }
+                else
+                {
+                    <i class="bi bi-arrow-repeat me-1"></i>
+                    <span>Importar</span>
+                }
+            </button>
+
+            <button class="btn-descargar-plantilla" @onclick="DescargarPlantilla"
+                    disabled="@descargandoPlantilla" title="Descargar plantilla vacía para rellenar">
+                @if (descargandoPlantilla)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                else
+                {
+                    <i class="bi bi-download me-1"></i>
+                }
+                Descargar plantilla
+            </button>
+        </div>
+
+        @* Error de validación *@
+        @if (!string.IsNullOrWhiteSpace(mensajeErrorFichas))
+        {
+            <div class="alerta-error">
+                <i class="bi bi-exclamation-triangle-fill"></i> @mensajeErrorFichas
+            </div>
+        }
+
+        @* Resultado de la importación *@
+        @if (resultadoFichas is not null)
+        {
+            <div class="resumen-importacion">
+                <div class="resumen-titulo">
+                    <i class="bi bi-check-circle-fill texto-ok"></i>
+                    Importación completada
+                    @if (resultadoFichas.FichasAfectadas.Any())
+                    {
+                        <span class="if-fichas-tag">
+                            Fichas: @string.Join(", ", resultadoFichas.FichasAfectadas)
+                        </span>
+                    }
+                </div>
+                <div class="resumen-grid">
+                    <div class="resumen-item">
+                        <span class="resumen-num">@resultadoFichas.TotalFilas</span>
+                        <span class="resumen-lbl">Filas totales</span>
+                    </div>
+                    <div class="resumen-item texto-ok">
+                        <span class="resumen-num">@resultadoFichas.FilasOk</span>
+                        <span class="resumen-lbl">Procesadas</span>
+                    </div>
+                    <div class="resumen-item @(resultadoFichas.FilasError > 0 ? "texto-error" : "")">
+                        <span class="resumen-num">@resultadoFichas.FilasError</span>
+                        <span class="resumen-lbl">Con error</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-num">@resultadoFichas.FichasCreadas</span>
+                        <span class="resumen-lbl">Fichas creadas</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-num">@resultadoFichas.FichasActualizadas</span>
+                        <span class="resumen-lbl">Fichas actualizadas</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-num">@resultadoFichas.CompetenciasVinculadas</span>
+                        <span class="resumen-lbl">Competencias vinculadas</span>
+                    </div>
+                </div>
+                @if (resultadoFichas.Errores.Any())
+                {
+                    <div class="detalle-errores">
+                        <div class="errores-titulo">
+                            <i class="bi bi-exclamation-triangle-fill texto-error"></i>
+                            Errores en la importación
+                        </div>
+                        <ul class="lista-errores">
+                            @foreach (var err in resultadoFichas.Errores)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    @* ── Panel: Importar Aprendices ─────────────────────────────────────────── *@
+    <div class="panel-importar">
+        <div class="panel-header">
+            <i class="bi bi-people"></i>
+            <span>Importar Aprendices</span>
+            <button class="btn-ver-estructura" @onclick="() => modalEstructuraAprendicesAbierto = true"
+                    title="Ver estructura de la plantilla">
+                <i class="bi bi-question-circle"></i> Ver plantilla
+            </button>
+        </div>
+
+        <p class="if-descripcion">
+            Vincula aprendices a una ficha usando la plantilla oficial
+            <strong>(.xlsx)</strong> o el Reporte de Juicios Evaluativos de SOFIA Plus
+            <strong>(.xls)</strong>. Primero selecciona la ficha destino, luego el archivo.
+        </p>
+
+        <div class="zona-selector-ficha">
+            <label class="selector-label">Ficha destino</label>
+            <select class="selector-ficha" @bind="fichaSeleccionadaAprendices">
+                <option value="">— Seleccionar ficha —</option>
+                @foreach (var f in fichas)
+                {
+                    <option value="@f.NumeroFicha">@f.NumeroFicha — @f.Nombre (@f.Estado)</option>
+                }
+            </select>
+        </div>
+
+        <div class="zona-carga">
+            <label class="btn-seleccionar" for="inputArchivoAprendices">
+                <i class="bi bi-file-earmark-spreadsheet"></i>
+                @(archivoAprendices is null ? "Seleccionar archivo (.xlsx o .xls)" : archivoAprendices.Name)
+            </label>
+            <InputFile id="inputArchivoAprendices" accept=".xlsx,.xls"
+                       OnChange="SeleccionarArchivoAprendices" class="d-none" />
+
+            <button class="btn-importar" @onclick="EjecutarImportarAprendices"
+                    disabled="@(archivoAprendices is null || string.IsNullOrWhiteSpace(fichaSeleccionadaAprendices) || importandoAprendices)">
+                @if (importandoAprendices)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                    <span>Importando...</span>
+                }
+                else
+                {
+                    <i class="bi bi-arrow-repeat me-1"></i>
+                    <span>Importar</span>
+                }
+            </button>
+
+            <button class="btn-descargar-plantilla" @onclick="DescargarPlantillaAprendices"
+                    disabled="@descargandoPlantillaAprendices" title="Descargar plantilla vacía para rellenar">
+                @if (descargandoPlantillaAprendices)
+                {
+                    <span class="spinner-border spinner-border-sm me-1"></span>
+                }
+                else
+                {
+                    <i class="bi bi-download me-1"></i>
+                }
+                Descargar plantilla
+            </button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(mensajeErrorAprendices))
+        {
+            <div class="alerta-error">
+                <i class="bi bi-exclamation-triangle-fill"></i> @mensajeErrorAprendices
+            </div>
+        }
+
+        @if (resultadoAprendices is not null)
+        {
+            <div class="resumen-importacion">
+                <div class="resumen-titulo">
+                    <i class="bi bi-check-circle-fill texto-ok"></i>
+                    Importación completada
+                </div>
+                <div class="resumen-grid">
+                    <div class="resumen-item">
+                        <span class="resumen-num">@resultadoAprendices.TotalFilas</span>
+                        <span class="resumen-lbl">Filas totales</span>
+                    </div>
+                    <div class="resumen-item texto-ok">
+                        <span class="resumen-num">@resultadoAprendices.FilasOk</span>
+                        <span class="resumen-lbl">Procesadas</span>
+                    </div>
+                    <div class="resumen-item @(resultadoAprendices.FilasError > 0 ? "texto-error" : "")">
+                        <span class="resumen-num">@resultadoAprendices.FilasError</span>
+                        <span class="resumen-lbl">Con error</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-num">@resultadoAprendices.AprendicesCreados</span>
+                        <span class="resumen-lbl">Aprendices creados</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-num">@resultadoAprendices.AprendicesActualizados</span>
+                        <span class="resumen-lbl">Actualizados</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-num">@resultadoAprendices.VinculosCreados</span>
+                        <span class="resumen-lbl">Vínculos creados</span>
+                    </div>
+                    <div class="resumen-item">
+                        <span class="resumen-num">@resultadoAprendices.VinculosActualizados</span>
+                        <span class="resumen-lbl">Vínculos actualizados</span>
+                    </div>
+                </div>
+                @if (resultadoAprendices.Errores.Any())
+                {
+                    <div class="detalle-errores">
+                        <div class="errores-titulo">
+                            <i class="bi bi-exclamation-triangle-fill texto-error"></i>
+                            Errores en la importación
+                        </div>
+                        <ul class="lista-errores">
+                            @foreach (var err in resultadoAprendices.Errores)
+                            {
+                                <li>@err</li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    </div>@* /.paneles-duo *@
+
+    @* ── Historial de importaciones SOFIA ──────────────────────────────────── *@
+    <div class="panel-historial">
+        <div class="panel-header">
+            <i class="bi bi-clock-history"></i>
+            <span>Historial de importaciones de juicios</span>
+            <button class="btn-refrescar" @onclick="CargarHistorial">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+
+        @if (cargandoHistorial)
+        {
+            <div class="cargando">
+                <span class="spinner-border spinner-border-sm me-2"></span> Cargando...
+            </div>
+        }
+        else if (!historial.Any())
+        {
+            <div class="vacio">No hay importaciones de juicios registradas.</div>
+        }
+        else
+        {
+            <div class="tabla-historial">
+                <div class="tabla-hist-header">
+                    <span>Fecha</span>
+                    <span>Archivo</span>
+                    <span>Usuario</span>
+                    <span>Ficha</span>
+                    <span>Estado</span>
+                    <span>Filas OK</span>
+                    <span>Errores</span>
+                </div>
+
+                @foreach (var item in historialPaginado)
+                {
+                    <div class="tabla-hist-fila">
+                        <span>@item.FechaSubida.ToString("dd/MM/yyyy HH:mm")</span>
+                        <span class="nombre-archivo" title="@item.NombreArchivo">@item.NombreArchivo</span>
+                        <span>@item.NombreUsuario</span>
+                        <span>@item.Observacion</span>
+                        <span>
+                            <span class="badge-estado @BadgeEstado(item.Estado)">@item.Estado</span>
+                        </span>
+                        <span>@(item.FilasOk ?? 0)</span>
+                        <span class="@(item.FilasError > 0 ? "texto-error" : "")">@(item.FilasError ?? 0)</span>
+                    </div>
+
+                    @if (importacionErrores == item.IdImportacion && errores.Any())
+                    {
+                        <div class="panel-errores-hist">
+                            <div class="errores-titulo">
+                                <i class="bi bi-exclamation-triangle-fill texto-error"></i>
+                                Errores — importación #@item.IdImportacion
+                                <button class="btn-cerrar-err" @onclick="CerrarErrores">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <table class="tabla-err">
+                                <thead>
+                                    <tr><th>Fila</th><th>Motivo</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var err in errores)
+                                    {
+                                        <tr>
+                                            <td>@err.NumeroFila</td>
+                                            <td>@err.MotivoError</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                }
+
+                <div class="paginacion-historial">
+                    <span class="info-registros-hist">
+                        @inicioRegistroHist – @finRegistroHist de @historial.Count importaciones
+                    </span>
+                    <div class="grupo-paginacion-hist">
+                        <button class="btn-pag-hist" @onclick="PaginaAnteriorHist"
+                                disabled="@(paginaActualHist == 1)">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <span class="pagina-info-hist">@paginaActualHist / @totalPaginasHist</span>
+                        <button class="btn-pag-hist" @onclick="PaginaSiguienteHist"
+                                disabled="@(paginaActualHist == totalPaginasHist)">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@* ── Modal: Estructura de la plantilla de fichas ─────────────────────────── *@
+@if (modalEstructuraAbierto)
+{
+    <div class="modal-overlay" @onclick="() => modalEstructuraAbierto = false">
+        <div class="modal-estructura" @onclick:stopPropagation>
+
+            <div class="me-header">
+                <div class="me-titulo">
+                    <i class="bi bi-file-earmark-ruled"></i>
+                    Estructura de la plantilla de fichas
+                </div>
+                <button class="me-btn-x" @onclick="() => modalEstructuraAbierto = false">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <p class="me-descripcion">
+                Cada fila del archivo representa una ficha. El nombre del programa
+                y las competencias se completan automáticamente.
+            </p>
+
+            <div class="me-tabla-cols">
+                <div class="me-col-header">
+                    <span>Columna</span>
+                    <span>Nombre</span>
+                    <span>Obligatorio</span>
+                    <span>Formato / Descripción</span>
+                </div>
+                <div class="me-col-fila">
+                    <span class="me-col-letra">A</span>
+                    <span class="me-col-nombre">NumeroFicha</span>
+                    <span class="me-badge-si">Sí</span>
+                    <span>Número de ficha SENA (ej. 2753647).</span>
+                </div>
+                <div class="me-col-fila">
+                    <span class="me-col-letra">B</span>
+                    <span class="me-col-nombre">Jornada</span>
+                    <span class="me-badge-si">Sí</span>
+                    <span>Jornada de la ficha: <b>Mañana</b> o <b>Tarde</b>.</span>
+                </div>
+                <div class="me-col-fila">
+                    <span class="me-col-letra">C</span>
+                    <span class="me-col-nombre">FechaInicio</span>
+                    <span class="me-badge-si">Sí</span>
+                    <span>Fecha de inicio en formato <b>DD/MM/AAAA</b> (ej. 01/02/2024).</span>
+                </div>
+                <div class="me-col-fila">
+                    <span class="me-col-letra">D</span>
+                    <span class="me-col-nombre">FechaFin</span>
+                    <span class="me-badge-no">No</span>
+                    <span>Fecha de fin en formato <b>DD/MM/AAAA</b>. Dejar vacío si la ficha sigue en curso.</span>
+                </div>
+                <div class="me-col-fila">
+                    <span class="me-col-letra">E</span>
+                    <span class="me-col-nombre">Modalidad</span>
+                    <span class="me-badge-si">Sí</span>
+                    <span>Modalidad de formación: <b>Presencial</b> o <b>Virtual</b>.</span>
+                </div>
+            </div>
+
+            <div class="me-footer">
+                <button class="btn-descargar-plantilla" @onclick="DescargarPlantilla"
+                        disabled="@descargandoPlantilla">
+                    @if (descargandoPlantilla)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-download me-1"></i>
+                    }
+                    Descargar plantilla vacía
+                </button>
+                <button class="btn-cerrar-modal" @onclick="() => modalEstructuraAbierto = false">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Modal: Estructura de la plantilla de aprendices ─────────────────────── *@
+@if (modalEstructuraAprendicesAbierto)
+{
+    <div class="modal-overlay" @onclick="() => modalEstructuraAprendicesAbierto = false">
+        <div class="modal-estructura" @onclick:stopPropagation>
+
+            <div class="me-header">
+                <div class="me-titulo">
+                    <i class="bi bi-file-earmark-ruled"></i>
+                    Estructura de la plantilla de aprendices
+                </div>
+                <button class="me-btn-x" @onclick="() => modalEstructuraAprendicesAbierto = false">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <p class="me-descripcion">
+                Cada fila representa un aprendiz. El sistema crea o actualiza la Persona
+                y el AprendizPerfil, y vincula el aprendiz a la ficha seleccionada.
+                También se acepta el Reporte de Juicios Evaluativos (.xls) exportado desde SOFIA Plus.
+            </p>
+
+            <div class="me-tabla-cols">
+                <div class="me-col-header">
+                    <span>Columna</span>
+                    <span>Nombre</span>
+                    <span>Obligatorio</span>
+                    <span>Formato / Descripción</span>
+                </div>
+                <div class="me-col-fila">
+                    <span class="me-col-letra">A</span>
+                    <span class="me-col-nombre">TipoDocumento</span>
+                    <span class="me-badge-si">Sí</span>
+                    <span>Tipo de documento (ej. CC, TI, CE).</span>
+                </div>
+                <div class="me-col-fila">
+                    <span class="me-col-letra">B</span>
+                    <span class="me-col-nombre">NumeroDocumento</span>
+                    <span class="me-badge-si">Sí</span>
+                    <span>Número de documento del aprendiz.</span>
+                </div>
+                <div class="me-col-fila">
+                    <span class="me-col-letra">C</span>
+                    <span class="me-col-nombre">Nombres</span>
+                    <span class="me-badge-si">Sí</span>
+                    <span>Nombres del aprendiz.</span>
+                </div>
+                <div class="me-col-fila">
+                    <span class="me-col-letra">D</span>
+                    <span class="me-col-nombre">Apellidos</span>
+                    <span class="me-badge-si">Sí</span>
+                    <span>Apellidos del aprendiz.</span>
+                </div>
+                <div class="me-col-fila">
+                    <span class="me-col-letra">E</span>
+                    <span class="me-col-nombre">Estado</span>
+                    <span class="me-badge-no">No</span>
+                    <span>Estado del aprendiz. Si está vacío se asigna <b>EN FORMACION</b>. Valores asignables: <b>EN FORMACION</b>, <b>CANCELADO</b>, <b>RETIRO VOLUNTARIO</b>. El estado <em>TRASLADADO</em> lo gestiona el sistema automáticamente.</span>
+                </div>
+            </div>
+
+            <div class="me-footer">
+                <button class="btn-descargar-plantilla" @onclick="DescargarPlantillaAprendices"
+                        disabled="@descargandoPlantillaAprendices">
+                    @if (descargandoPlantillaAprendices)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-download me-1"></i>
+                    }
+                    Descargar plantilla vacía
+                </button>
+                <button class="btn-cerrar-modal" @onclick="() => modalEstructuraAprendicesAbierto = false">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // ── Estado: importar fichas ──────────────────────────────────────────────
+
+    /// <summary>Archivo .xlsx seleccionado por el usuario para importar fichas.</summary>
+    IBrowserFile?                  archivoFichas        = null;
+
+    /// <summary>true mientras la importación de fichas está en progreso.</summary>
+    bool                           importandoFichas     = false;
+
+    /// <summary>true mientras se descarga la plantilla de fichas de la API.</summary>
+    bool                           descargandoPlantilla = false;
+
+    /// <summary>Mensaje de error de validación de archivo o fallo de API.</summary>
+    string                         mensajeErrorFichas   = string.Empty;
+
+    /// <summary>Resultado de la última importación de fichas.</summary>
+    ResultadoImportacionFichaDto?  resultadoFichas      = null;
+
+    /// <summary>true cuando el modal de estructura de la plantilla está visible.</summary>
+    bool                           modalEstructuraAbierto = false;
+
+    // ── Estado: importar aprendices ─────────────────────────────────────────
+
+    List<FichaDTO>                   fichas                           = [];
+    string                           fichaSeleccionadaAprendices      = string.Empty;
+    IBrowserFile?                    archivoAprendices                = null;
+    bool                             importandoAprendices             = false;
+    bool                             descargandoPlantillaAprendices   = false;
+    string                           mensajeErrorAprendices           = string.Empty;
+    ResultadoImportacionAprendizDto? resultadoAprendices              = null;
+    bool                             modalEstructuraAprendicesAbierto = false;
+
+    // ── Estado: historial SOFIA ──────────────────────────────────────────────
+
+    bool                        cargandoHistorial  = true;
+    List<ImportacionResumenDTO> historial          = [];
+    int?                        importacionErrores = null;
+    List<ImportacionErrorDTO>   errores            = [];
+
+    // ── Paginación historial ─────────────────────────────────────────────────
+    int paginaActualHist       = 1;
+    int registrosPorPaginaHist = 8;
+
+    IEnumerable<ImportacionResumenDTO> historialPaginado =>
+        historial
+            .Skip((paginaActualHist - 1) * registrosPorPaginaHist)
+            .Take(registrosPorPaginaHist);
+
+    int totalPaginasHist   => Math.Max(1, (int)Math.Ceiling((double)historial.Count / registrosPorPaginaHist));
+    int inicioRegistroHist => historial.Any() ? (paginaActualHist - 1) * registrosPorPaginaHist + 1 : 0;
+    int finRegistroHist    => Math.Min(paginaActualHist * registrosPorPaginaHist, historial.Count);
+
+    void PaginaAnteriorHist()  { if (paginaActualHist > 1)                paginaActualHist--; }
+    void PaginaSiguienteHist() { if (paginaActualHist < totalPaginasHist)  paginaActualHist++; }
+
+    protected override async Task OnInitializedAsync()
+        => await Task.WhenAll(CargarHistorial(), CargarFichas());
+
+    // ── Fichas (selector) ────────────────────────────────────────────────────
+
+    async Task CargarFichas()
+        => fichas = await FichaApi.ObtenerFichasAsync();
+
+    // ── Importar aprendices ──────────────────────────────────────────────────
+
+    void SeleccionarArchivoAprendices(InputFileChangeEventArgs e)
+    {
+        mensajeErrorAprendices = string.Empty;
+        resultadoAprendices    = null;
+        var f      = e.File;
+        bool esXlsx = f.Name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase);
+        bool esXls  = f.Name.EndsWith(".xls",  StringComparison.OrdinalIgnoreCase) && !esXlsx;
+
+        if (!esXlsx && !esXls)
+        {
+            mensajeErrorAprendices = "Solo se aceptan archivos .xlsx (plantilla oficial) o .xls (SOFIA Plus).";
+            archivoAprendices      = null;
+            return;
+        }
+        archivoAprendices = f;
+    }
+
+    async Task EjecutarImportarAprendices()
+    {
+        if (archivoAprendices is null || string.IsNullOrWhiteSpace(fichaSeleccionadaAprendices)) return;
+        importandoAprendices   = true;
+        mensajeErrorAprendices = string.Empty;
+        resultadoAprendices    = null;
+        StateHasChanged();
+
+        try
+        {
+            await using var stream = archivoAprendices.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+            resultadoAprendices = await ImportacionApi.ImportarAprendicesAsync(
+                stream, archivoAprendices.Name, fichaSeleccionadaAprendices);
+
+            if (resultadoAprendices is null)
+                mensajeErrorAprendices = "El servidor no devolvió resultado. Revise los logs de la API.";
+        }
+        catch (Exception ex)
+        {
+            mensajeErrorAprendices = $"Error al importar: {ex.Message}";
+        }
+        finally
+        {
+            importandoAprendices = false;
+            archivoAprendices    = null;
+            StateHasChanged();
+        }
+    }
+
+    async Task DescargarPlantillaAprendices()
+    {
+        descargandoPlantillaAprendices = true;
+        StateHasChanged();
+
+        try
+        {
+            var bytes = await ImportacionApi.DescargarPlantillaAprendicesAsync();
+            if (bytes is null || bytes.Length == 0)
+            {
+                mensajeErrorAprendices = "No se pudo descargar la plantilla. Verifique que la API esté disponible.";
+                return;
+            }
+            await JS.InvokeVoidAsync(
+                "downloadBytesAsFile",
+                "PlantillaAprendices.xlsx",
+                bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        }
+        catch (Exception ex)
+        {
+            mensajeErrorAprendices = $"Error al descargar plantilla: {ex.Message}";
+        }
+        finally
+        {
+            descargandoPlantillaAprendices = false;
+            StateHasChanged();
+        }
+    }
+
+    // ── Historial SOFIA ──────────────────────────────────────────────────────
+
+    async Task CargarHistorial()
+    {
+        cargandoHistorial = true;
+        paginaActualHist  = 1;
+        historial         = await ImportacionApi.ObtenerHistorialAsync();
+        cargandoHistorial = false;
+    }
+
+    async Task VerErrores(int idImportacion)
+    {
+        if (importacionErrores == idImportacion) { CerrarErrores(); return; }
+        errores            = await ImportacionApi.ObtenerErroresAsync(idImportacion);
+        importacionErrores = idImportacion;
+    }
+
+    void CerrarErrores() { importacionErrores = null; errores = []; }
+
+    static string BadgeEstado(string estado) => estado switch
+    {
+        "Procesado" => "badge-ok",
+        "Error"     => "badge-error",
+        _           => "badge-pendiente"
+    };
+
+    // ── Importar fichas ──────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Valida que el archivo tenga extensión .xlsx (nuestra plantilla, no el .xls de SOFIA).
+    /// </summary>
+    void SeleccionarArchivoFichas(InputFileChangeEventArgs e)
+    {
+        mensajeErrorFichas = string.Empty;
+        resultadoFichas    = null;
+        var f = e.File;
+
+        if (!f.Name.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            mensajeErrorFichas = "Solo se acepta el archivo .xlsx de la plantilla oficial de fichas. " +
+                                 "Descarga la plantilla, rellénala y vuelve a cargarla aquí.";
+            archivoFichas      = null;
+            return;
+        }
+        archivoFichas = f;
+    }
+
+    /// <summary>
+    /// Envía el archivo a la API y muestra el resultado inline.
+    /// </summary>
+    async Task ImportarFichas()
+    {
+        if (archivoFichas is null) return;
+        importandoFichas   = true;
+        mensajeErrorFichas = string.Empty;
+        resultadoFichas    = null;
+        StateHasChanged();
+
+        try
+        {
+            await using var stream = archivoFichas.OpenReadStream(maxAllowedSize: 20 * 1024 * 1024);
+            resultadoFichas = await ImportacionApi.ImportarFichasAsync(stream, archivoFichas.Name);
+
+            if (resultadoFichas is null)
+                mensajeErrorFichas = "El servidor no devolvió resultado. Revise los logs de la API.";
+
+            FichaStateService.NotifyChange();
+        }
+        catch (Exception ex)
+        {
+            mensajeErrorFichas = $"Error al importar: {ex.Message}";
+        }
+        finally
+        {
+            importandoFichas = false;
+            archivoFichas    = null;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Descarga la plantilla .xlsx desde la API y la entrega al navegador
+    /// usando la función JS <c>downloadBytesAsFile</c> definida en App.razor.
+    /// </summary>
+    async Task DescargarPlantilla()
+    {
+        descargandoPlantilla = true;
+        StateHasChanged();
+
+        try
+        {
+            var bytes = await ImportacionApi.DescargarPlantillaFichasAsync();
+
+            if (bytes is null || bytes.Length == 0)
+            {
+                mensajeErrorFichas = "No se pudo descargar la plantilla. Verifique que la API esté disponible.";
+                return;
+            }
+
+            await JS.InvokeVoidAsync(
+                "downloadBytesAsFile",
+                "PlantillaFichas.xlsx",
+                bytes,
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        }
+        catch (Exception ex)
+        {
+            mensajeErrorFichas = $"Error al descargar plantilla: {ex.Message}";
+        }
+        finally
+        {
+            descargandoPlantilla = false;
+            StateHasChanged();
+        }
+    }
+}

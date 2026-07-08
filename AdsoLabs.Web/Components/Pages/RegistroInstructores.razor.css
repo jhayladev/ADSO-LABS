@@ -1,0 +1,270 @@
+/* ═══════════════════════════════════════════════════
+   RegistroInstructores.razor.css
+   Formulario de registro de nuevo instructor
+═══════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+/* ── Página ─────────────────────────────────────── */
+.reg-page {
+    font-family: 'Poppins', sans-serif;
+    background: #F4F6FB;
+    min-height: 100vh;
+    padding: 32px 36px 56px;
+    color: #1E293B;
+}
+
+.reg-header {
+    margin-bottom: 24px;
+}
+
+.reg-header h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #1E293B;
+    margin: 0 0 4px;
+}
+
+.reg-subtitle {
+    font-size: 0.875rem;
+    color: #64748B;
+    margin: 0;
+}
+
+/* ── Card principal ─────────────────────────────── */
+.reg-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 2px 20px rgba(59,130,246,.07);
+    padding: 32px 36px 28px;
+}
+
+/* ── Sección ────────────────────────────────────── */
+.reg-section {
+    margin-bottom: 8px;
+}
+
+.reg-section-title {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #4F46E5;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin: 0 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.reg-section-title i {
+    font-size: 0.95rem;
+}
+
+.reg-divider {
+    height: 1px;
+    background: #F1F5F9;
+    margin: 24px 0;
+}
+
+/* ── Grid de campos ─────────────────────────────── */
+.reg-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px 24px;
+}
+
+/* ── Campo individual ───────────────────────────── */
+.reg-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.reg-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748B;
+    letter-spacing: 0.01em;
+}
+
+.reg-input {
+    height: 42px;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 0 14px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #1E293B;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.reg-input:focus {
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 3px rgba(79,70,229,.08);
+}
+
+.reg-input::placeholder {
+    color: #94A3B8;
+    font-weight: 400;
+}
+
+select.reg-input {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16'%3E%3Cpath fill='%2364748B' d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 38px;
+}
+
+input[type="date"].reg-input {
+    color: #1E293B;
+}
+
+/* ── Footer con botón ───────────────────────────── */
+.reg-footer {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid #F1F5F9;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.reg-btn-guardar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+    padding: 0 28px;
+    background: #4F46E5;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.reg-btn-guardar:hover:not(:disabled) {
+    background: #4338CA;
+    transform: translateY(-1px);
+}
+
+.reg-btn-guardar:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ── Modal overlay ────────────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fade-in 0.18s ease;
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal-feedback {
+    background: #fff;
+    border-radius: 20px;
+    padding: 36px 32px 28px;
+    width: 420px;
+    max-width: 92vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    animation: slide-up 0.20s ease;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+}
+
+@keyframes slide-up {
+    from { opacity: 0; transform: translateY(18px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+.modal-ok    { border-top: 5px solid #10B981; }
+.modal-error { border-top: 5px solid #EF4444; }
+
+.modal-icono {
+    font-size: 48px;
+    line-height: 1;
+}
+
+.modal-ok    .modal-icono { color: #10B981; }
+.modal-error .modal-icono { color: #EF4444; }
+
+.modal-feedback h3 {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin: 0;
+}
+
+.modal-mensaje {
+    font-size: 0.875rem;
+    color: #64748B;
+    margin: 0;
+}
+
+.modal-errores {
+    background: #FEF2F2;
+    border: 1px solid #FCA5A5;
+    border-radius: 10px;
+    padding: 10px 16px 10px 28px;
+    margin: 0;
+    width: 100%;
+    text-align: left;
+    color: #991B1B;
+    font-size: 0.8125rem;
+    line-height: 1.9;
+}
+
+.modal-btn {
+    margin-top: 8px;
+    height: 42px;
+    padding: 0 32px;
+    border-radius: 10px;
+    border: none;
+    background: #4F46E5;
+    color: #fff;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.modal-btn:hover {
+    background: #4338CA;
+}
+
+/* ── Responsivo ─────────────────────────────────── */
+@media (max-width: 860px) {
+    .reg-page  { padding: 20px 18px 48px; }
+    .reg-card  { padding: 24px 20px 20px; }
+    .reg-grid  { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+    .reg-header h1 { font-size: 1.35rem; }
+}

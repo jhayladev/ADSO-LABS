@@ -1,0 +1,875 @@
+@page "/asignacion-competencias"
+
+@using AdsoLabs.Application.DTOs.Competencia
+@using AdsoLabs.Application.DTOs.Fichas
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@attribute [Authorize(Roles = "Administrador")]
+@rendermode InteractiveServer
+@inject NavigationManager nav
+@inject SesionService SesionService
+@inject CompetenciaApiService CompetenciaApiService
+@inject ProgramacionApiService ProgramacionApiService
+@inject FichaApiService FichaApiService
+
+
+<section class="competencias">
+    <h1>Asignacion de Competencias</h1>
+    <h2>Ficha: @SesionService.Ficha</h2>
+
+    <div class="contenedor-competencias">
+
+        <!-- ─── Modo Vista (read-only) ──────────────────────────────────────── -->
+        @if (competenciaVistaActual is not null)
+        {
+            <div class="vista-card">
+                <div class="vista-card-header">
+                    <span class="badge-vista">✔ Completada</span>
+                    <h3>@competenciaVistaActual.Nombre</h3>
+                    <p class="vista-meta">
+                        Código @competenciaVistaActual.Codigo
+                        · @competenciaVistaActual.Tipo
+                        · @competenciaVistaActual.HorasAsignadas h totales
+                    </p>
+                </div>
+                <div class="vista-resultados-list">
+                    @if (!resultadosVista.Any())
+                    {
+                        <p style="color:#6B7280;padding:12px;">Sin resultados registrados.</p>
+                    }
+                    else
+                    {
+                        @foreach (var r in resultadosVista)
+                        {
+                            <div class="vista-resultado-row">
+                                <span class="badge-vista-resultado">✓</span>
+                                <span class="vista-resultado-nombre">@r.Nombre</span>
+                                <span class="vista-resultado-detalle">@r.NombreInstructor</span>
+                                <span class="vista-resultado-detalle">
+                                    @r.FechaInicio?.ToString("dd/MM/yyyy") – @r.FechaFin?.ToString("dd/MM/yyyy")
+                                </span>
+                                <span class="vista-resultado-horas">@r.HorasProgramadas h</span>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+            <div class="linea"></div>
+            <div class="button-data">
+                <button @onclick="Navegar">Volver</button>
+            </div>
+        }
+        else
+        {
+        <h3>Datos de la Competencia</h3>
+        <div class="data-competencias">
+
+            <!-- Tipo de competencia -->
+            <div class="tipo-competencias">
+                <InputSelect class="select" @bind-Value="tipoSeleccionado">
+                    <option value="">Seleccionar tipo de competencia</option>
+                    @foreach (var tipo in tipos)
+                    {
+                        <option value="@tipo">@tipo</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <!-- Selector de competencia (catálogo, filtrado por tipo) -->
+            <div class="tipo-competencias">
+                <InputSelect class="select" @bind-Value="idCompetenciaSeleccionada">
+                    <option value="0">Seleccionar competencia</option>
+                    @foreach (var c in competenciasFiltradas)
+                    {
+                        <option value="@c.IdCompetencia">@c.NombreCompetencia</option>
+                    }
+                </InputSelect>
+            </div>
+
+            <!-- Código (solo lectura) -->
+            <input type="text"
+                   placeholder="Código de la Competencia"
+                   value="@codigoCompetencia"
+                   disabled />
+
+            <!-- Fase formativa (solo lectura) -->
+            <input type="text"
+                   placeholder="Fase formativa"
+                   value="@faseCompetenciaSeleccionada"
+                   disabled />
+        </div>
+
+        <!-- ─── Configuración de la competencia ────────────────────────── -->
+        @if (_idCompetenciaSeleccionada > 0 && (!fcYaConfigurada || editandoConfig))
+        {
+        <div class="config-competencia">
+            <h3>Configuración de la Competencia</h3>
+            <p class="config-hint">
+                Defina la ventana de programación antes de asignar los Resultados de Aprendizaje.
+            </p>
+            <div class="config-campos">
+                <div class="campo-programar">
+                    <label>Fecha inicio de la competencia</label>
+                    <input type="date" @bind="fcFechaInicio" @bind:after="ActualizarResumenFechas" />
+                </div>
+                <div class="campo-programar">
+                    <label>Fecha fin de la competencia</label>
+                    <input type="date" @bind="fcFechaFin" @bind:after="ActualizarResumenFechas" />
+                </div>
+                <div class="campo-programar">
+                    <label>Total de horas</label>
+                    <input type="number"
+                           placeholder="Ej: 220"
+                           min="1"
+                           @bind="fcTotalHoras" />
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(mensajeConfig))
+            {
+                <p class="@(configExitosa ? "msg-ok" : "msg-error")">@mensajeConfig</p>
+            }
+            <div class="btn-programar-wrapper">
+                <button class="btn-programar"
+                        disabled="@guardandoConfig"
+                        @onclick="GuardarConfiguracionAsync">
+                    @(guardandoConfig ? "Guardando..." : "Guardar configuración")
+                </button>
+                @if (editandoConfig)
+                {
+                    <button class="btn-cancelar-config" @onclick="() => editandoConfig = false">
+                        Cancelar edición
+                    </button>
+                }
+            </div>
+        </div>
+        }
+
+        <!-- ─── Resultados de Aprendizaje ────────────────────────────────── -->
+        <div class="resultados-aprendizaje">
+            <h3>Resultados de Aprendizaje</h3>
+
+            @if (cargandoResultados)
+            {
+                <p style="color:#6B7280; padding:12px;">Cargando resultados...</p>
+            }
+            else if (!string.IsNullOrEmpty(errorCarga))
+            {
+                <p class="msg-error" style="padding:12px;">@errorCarga</p>
+            }
+            else if (!resultados.Any())
+            {
+                <p style="color:#6B7280; padding:12px;">
+                    Seleccione una competencia para ver sus resultados de aprendizaje.
+                </p>
+            }
+            else
+            {
+                @foreach (var resultado in resultados)
+                {
+                    <div class="resultado-item @(resultado.Estado == "Completado" ? "resultado-completado" : "")">
+
+                        <!-- ── Cabecera del RA ─────────────────────────────── -->
+                        <div class="resultado-header" @onclick="() => SeleccionarResultado(resultado)">
+                            <input type="radio"
+                                   name="resultado"
+                                   checked="@resultado.Seleccionado"
+                                   disabled="@(resultado.Estado == "Completado")"
+                                   @onchange="() => SeleccionarResultado(resultado)"
+                                   @onclick:stopPropagation="true" />
+
+                            <span class="resultado-nombre-texto">@resultado.Nombre</span>
+
+                            @if (resultado.Estado == "Completado")
+                            {
+                                <span class="badge-completado">✓ Completado</span>
+                            }
+                            else if (resultado.Estado == "Programado")
+                            {
+                                <span class="badge-programado">Programado</span>
+                            }
+
+                        </div>
+
+                        @if (resultado.Seleccionado && resultado.Estado == "Completado")
+                        {
+                            <div class="resultado-panel resultado-panel-completado">
+                                <p>✅ Este resultado ya fue completado. Todos los aprendices activos tienen juicio <strong>Aprobado</strong>.</p>
+                            </div>
+                        }
+
+                        @* Programado en modo lectura: mostrar datos actuales + botón Editar *@
+                        @if (resultado.Seleccionado && resultado.Estado == "Programado" && !resultado.Editando)
+                        {
+                            <div class="resultado-panel-programado-info">
+                                <div class="info-programado-grid">
+                                    <div class="info-programado-campo" style="grid-column: span 2">
+                                        <span class="info-programado-label">Instructor</span>
+                                        <span class="info-programado-valor">@resultado.NombreInstructor</span>
+                                    </div>
+                                    <div class="info-programado-campo">
+                                        <span class="info-programado-label">Horas programadas</span>
+                                        <span class="info-programado-valor">@resultado.HorasProgramadas h</span>
+                                    </div>
+                                    <div class="info-programado-campo">
+                                        <span class="info-programado-label">Hora inicio</span>
+                                        <span class="info-programado-valor">@resultado.HoraInicio?.ToString("hh:mm tt")</span>
+                                    </div>
+                                    <div class="info-programado-campo">
+                                        <span class="info-programado-label">Fecha inicio</span>
+                                        <span class="info-programado-valor">@resultado.FechaInicioInput?.ToString("dd/MM/yyyy")</span>
+                                    </div>
+                                    <div class="info-programado-campo">
+                                        <span class="info-programado-label">Hora fin</span>
+                                        <span class="info-programado-valor">@resultado.HoraFinal?.ToString("hh:mm tt")</span>
+                                    </div>
+                                    <div class="info-programado-campo">
+                                        <span class="info-programado-label">Fecha fin</span>
+                                        <span class="info-programado-valor">@resultado.FechaFinInput?.ToString("dd/MM/yyyy")</span>
+                                    </div>
+                                </div>
+                                <div class="btn-programar-wrapper">
+                                    <button class="btn-editar" @onclick="() => resultado.Editando = true">
+                                        <i class="bi bi-pencil me-1"></i> Editar
+                                    </button>
+                                    <button class="btn-eliminar-programacion"
+                                            disabled="@resultado.Eliminando"
+                                            @onclick="() => EliminarProgramacion(resultado)">
+                                        <i class="bi bi-trash me-1"></i>
+                                        @(resultado.Eliminando ? "Eliminando..." : "Eliminar programación")
+                                    </button>
+                                </div>
+                            </div>
+                        }
+
+                        @* Formulario de programación: Pendiente o Programado en modo edición *@
+                        @if (resultado.Seleccionado && resultado.Estado != "Completado" && (resultado.Estado != "Programado" || resultado.Editando))
+                        {
+                            <div class="resultado-panel">
+
+                                <!-- Instructor -->
+                                <div class="campo-programar">
+                                    <label>Instructor</label>
+                                    <InputSelect class="select" @bind-Value="resultado.IdInstructorSeleccionado">
+                                        <option value="0">Seleccionar instructor</option>
+                                        @foreach (var inst in instructores)
+                                        {
+                                            <option value="@inst.IdInstructor">@inst.Nombres</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+
+                                <!-- Horas programadas -->
+                                <div class="campo-programar">
+                                    <label>Horas programadas</label>
+                                    <input type="number"
+                                           placeholder="Ej: 60"
+                                           @bind="resultado.HorasProgramadas"
+                                           @bind:after="() => ActualizarFechaFin(resultado)"
+                                           min="1" />
+                                </div>
+
+                                <!-- Hora inicio -->
+                                <div class="campo-programar">
+                                    <label>Hora inicio</label>
+                                    <input type="time"
+                                           @bind="resultado.HoraInicio"
+                                           @bind:after="() => ActualizarFechaFin(resultado)" />
+                                </div>
+
+                                <!-- Hora fin -->
+                                <div class="campo-programar">
+                                    <label>Hora fin</label>
+                                    <input type="time"
+                                           @bind="resultado.HoraFinal"
+                                           @bind:after="() => ActualizarFechaFin(resultado)" />
+                                </div>
+
+                                <!-- Fecha inicio -->
+                                <div class="campo-programar">
+                                    <label>Fecha inicio</label>
+                                    <input type="date"
+                                           @bind="resultado.FechaInicioInput"
+                                           @bind:after="() => ActualizarFechaFin(resultado)" />
+                                </div>
+
+                                <!-- Fecha fin (autocalculada) -->
+                                <div class="campo-programar">
+                                    <label>Fecha fin</label>
+                                    <div class="input-fecha-fin-wrapper">
+                                        <input type="date" @bind="resultado.FechaFinInput" />
+                                        <small class="hint-fechafin">
+                                            📅 Se calcula automáticamente
+                                        </small>
+                                        @if (resultado.DiasCalculados > 0)
+                                        {
+                                            <small class="hint-calculo">
+                                                @resultado.DiasCalculados día(s)
+                                            </small>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Mensaje de validación -->
+                                @if (!string.IsNullOrEmpty(resultado.Mensaje))
+                                {
+                                    <p class="@(resultado.EsExitoso ? "msg-ok" : "msg-error")">
+                                        @resultado.Mensaje
+                                    </p>
+                                }
+
+                                <!-- Botón Programar -->
+                                <div class="btn-programar-wrapper">
+                                    <button class="btn-programar"
+                                            disabled="@resultado.Guardando"
+                                            @onclick="() => Programar(resultado)">
+                                        @if (resultado.Guardando)
+                                        {
+                                            @("Guardando...")
+                                        }
+                                        else if (resultado.Estado == "Programado")
+                                        {
+                                            @("Actualizar")
+                                        }
+                                        else
+                                        {
+                                            @("Programar")
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+
+        <!-- ─── Fechas generales (de la configuración del FC) ─────────────── -->
+        <div class="horarios-input">
+            <div class="campo-info-readonly">
+                <label>Fecha inicio de la competencia</label>
+                <input type="text" class="input-fecha"
+                       value="@(fcFechaInicio.HasValue ? fcFechaInicio.Value.ToString("dd/MM/yyyy") : "Sin configurar")"
+                       disabled />
+            </div>
+            <div class="campo-info-readonly">
+                <label>Fecha fin de la competencia</label>
+                <input type="text" class="input-fecha"
+                       value="@(fcFechaFin.HasValue ? fcFechaFin.Value.ToString("dd/MM/yyyy") : "Sin configurar")"
+                       disabled />
+            </div>
+            @if (puedeEditarConfig && !editandoConfig)
+            {
+                <button class="btn-editar-config" @onclick="() => editandoConfig = true">
+                    <i class="bi bi-pencil me-1"></i> Editar configuración
+                </button>
+            }
+        </div>
+
+        <!-- ─── Desglose de horas ─────────────────────────────────────────── -->
+        @if (horasTotalesCompetencia > 0)
+        {
+            <div class="horas-resumen">
+                <div class="hora-chip hora-total">
+                    <span class="hora-label">Total</span>
+                    <span class="hora-valor">@horasTotalesCompetencia h</span>
+                </div>
+                <div class="hora-chip hora-programadas">
+                    <span class="hora-label">Consumidas</span>
+                    <span class="hora-valor">@horasProgramadasCompetencia h</span>
+                </div>
+                <div class="hora-chip hora-restantes @(horasRestantesCompetencia <= 0 ? "agotadas" : "")">
+                    <span class="hora-label">Restantes</span>
+                    <span class="hora-valor">@horasRestantesCompetencia h</span>
+                </div>
+            </div>
+        }
+
+        <div class="linea"></div>
+        <div class="button-data">
+            <button @onclick="Navegar">Cancelar</button>
+        </div>
+
+        }
+
+    </div>
+</section>
+
+@code {
+
+    // ─── Catálogo de competencias ────────────────────────────────────────────
+    List<CompetenciaDTO>      todasCompetencias    = [];
+    List<CompetenciaDTO>      competenciasFiltradas = [];
+    List<InstructorSelectDTO> instructores         = [];
+    List<ResultadoVm>         resultados           = [];
+    bool                      cargandoResultados   = false;
+
+    // ─── Configuración de la FichaCompetencia ────────────────────────────────
+    DateTime? fcFechaInicio    = null;
+    DateTime? fcFechaFin       = null;
+    int       fcTotalHoras     = 0;
+    bool      guardandoConfig  = false;
+    bool      configExitosa    = false;
+    string    mensajeConfig    = "";
+    // True SOLO cuando la BD ya tiene los tres campos guardados para esta FC.
+    // No cambia mientras el usuario edita los campos del formulario.
+    bool      fcYaConfigurada  = false;
+    // True cuando el usuario activa el modo edición desde la sección de fechas.
+    bool      editandoConfig   = false;
+    // Editar config solo si ya está configurada Y ningún resultado tiene programación activa.
+    bool puedeEditarConfig =>
+        fcYaConfigurada && resultados.All(r => r.Estado == "Pendiente");
+
+    // ─── Ficha-competencias: se usa para filtrar "Vista" del dropdown ────────
+    List<CompetenciaFichaDTO> fichaCompetencias    = [];
+
+    // ─── Modo Vista (read-only): se activa cuando se navega desde Fichas ─────
+    CompetenciaFichaDTO?      competenciaVistaActual = null;
+    List<ResultadoFichaDTO>   resultadosVista        = [];
+
+    readonly List<string> tipos = ["Transversal", "Tecnica", "Clave"];
+
+    // ─── Tipo seleccionado ───────────────────────────────────────────────────
+    string _tipoSeleccionado = "";
+    string tipoSeleccionado
+    {
+        get => _tipoSeleccionado;
+        set { _tipoSeleccionado = value; FiltrarCompetencias(); }
+    }
+
+    // ─── Competencia seleccionada (del catálogo) ─────────────────────────────
+    string errorCarga = "";
+
+    int _idCompetenciaSeleccionada = 0;
+    int idCompetenciaSeleccionada
+    {
+        get => _idCompetenciaSeleccionada;
+        set
+        {
+            _idCompetenciaSeleccionada = value;
+            var comp = todasCompetencias.FirstOrDefault(c => c.IdCompetencia == value);
+            if (comp is not null && _tipoSeleccionado != comp.TipoCompetencia)
+            {
+                _tipoSeleccionado = comp.TipoCompetencia;
+                // Rebuilds the list inline — guarantees selected competencia is always
+                // in competenciasFiltradas when Blazor re-renders, with no re-entrant risk.
+                competenciasFiltradas = todasCompetencias
+                    .Where(c => c.TipoCompetencia == _tipoSeleccionado)
+                    .ToList();
+            }
+            _ = InvokeAsync(CargarResultadosAsync);
+            CargarConfiguracionFc(value);
+        }
+    }
+
+    string codigoCompetencia => todasCompetencias
+        .FirstOrDefault(c => c.IdCompetencia == _idCompetenciaSeleccionada)
+        ?.CodigoCompetencia ?? "";
+
+    string faseCompetenciaSeleccionada => todasCompetencias
+        .FirstOrDefault(c => c.IdCompetencia == _idCompetenciaSeleccionada)
+        ?.FaseFormativa ?? "";
+
+    // TotalHoras usa el valor configurado en FC; si no está configurado, cae al catálogo.
+    int horasTotalesCompetencia =>
+        fcTotalHoras > 0
+            ? fcTotalHoras
+            : todasCompetencias
+                .FirstOrDefault(c => c.IdCompetencia == _idCompetenciaSeleccionada)
+                ?.HorasAsignadas ?? 0;
+
+    // Horas comprometidas = suma de HorasProgramadas reales de los resultados que ya
+    // tienen ese dato ingresado manualmente (Programado o Completado con programación).
+    // Los resultados Completados sin horas (NecesitaProgramacion) aportan 0.
+    int horasProgramadasCompetencia =>
+        resultados
+            .Where(r => r.Estado == "Programado" ||
+                       (r.Estado == "Completado" && !r.NecesitaProgramacion))
+            .Sum(r => r.HorasProgramadas);
+
+    int horasRestantesCompetencia => horasTotalesCompetencia - horasProgramadasCompetencia;
+
+    // ─── Ciclo de vida ───────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        var tareaCompetencias  = CompetenciaApiService.ObtenerCompetenciasAsync();
+        var tareaInstructores  = ProgramacionApiService.ObtenerInstructoresActivosAsync();
+        var tareaFichaComps    = FichaApiService.ObtenerFichaCompetenciaAsync(SesionService.Ficha);
+
+        await Task.WhenAll(tareaCompetencias, tareaInstructores, tareaFichaComps);
+
+        fichaCompetencias = tareaFichaComps.Result;
+        instructores      = tareaInstructores.Result;
+
+        // Códigos cuyo estado en esta ficha es "Vista" → excluir del dropdown
+        var vistasSet = fichaCompetencias
+            .Where(fc => fc.Estado == "Vista")
+            .Select(fc => fc.Codigo)
+            .ToHashSet();
+
+        // Solo tipos programables y no finalizados
+        todasCompetencias = tareaCompetencias.Result
+            .Where(c => c.TipoCompetencia != "Practica"
+                     && c.TipoCompetencia != "Induccion"
+                     && !vistasSet.Contains(c.CodigoCompetencia))
+            .ToList();
+
+        // ── Preselección desde Fichas ────────────────────────────────────────
+        int presel = SesionService.IdCompetenciaPreseleccionada;
+        SesionService.IdCompetenciaPreseleccionada = 0; // reset inmediato
+
+        if (presel != 0)
+        {
+            var fcPresel = fichaCompetencias.FirstOrDefault(fc => fc.IdCompetencia == presel);
+
+            if (fcPresel?.Estado == "Vista")
+            {
+                // Modo read-only: mostrar tarjeta Vista sin tocar el dropdown
+                competenciaVistaActual = fcPresel;
+                await CargarResultadosVistaAsync();
+                return;
+            }
+
+            // Pendiente o Programada → pre-llenar tipo + competencia
+            var comp = todasCompetencias.FirstOrDefault(c => c.IdCompetencia == presel);
+            if (comp is not null)
+            {
+                _idCompetenciaSeleccionada = presel;
+                _tipoSeleccionado          = comp.TipoCompetencia;
+                competenciasFiltradas      = todasCompetencias
+                    .Where(c => c.TipoCompetencia == _tipoSeleccionado)
+                    .ToList();
+                CargarConfiguracionFc(presel);
+                await CargarResultadosAsync();
+                return;
+            }
+        }
+
+        FiltrarCompetencias();
+    }
+
+    // ─── Cargar resultados para modo Vista (read-only) ───────────────────────
+    async Task CargarResultadosVistaAsync()
+    {
+        if (competenciaVistaActual is null) return;
+        try
+        {
+            resultadosVista = await ProgramacionApiService.ObtenerResultadosAsync(
+                SesionService.Ficha, competenciaVistaActual.IdCompetencia);
+        }
+        catch
+        {
+            resultadosVista = [];
+        }
+    }
+
+    // ─── Filtros ─────────────────────────────────────────────────────────────
+    // Called only from the tipo dropdown's setter (manual user change).
+    // The competencia setter handles its own inline rebuild and never calls this.
+    void FiltrarCompetencias()
+    {
+        competenciasFiltradas = string.IsNullOrEmpty(_tipoSeleccionado)
+            ? todasCompetencias
+            : todasCompetencias.Where(c => c.TipoCompetencia == _tipoSeleccionado).ToList();
+
+        if (!competenciasFiltradas.Any(c => c.IdCompetencia == _idCompetenciaSeleccionada))
+        {
+            _idCompetenciaSeleccionada = 0;
+            resultados = [];
+        }
+    }
+
+    // ─── Carga de resultados ─────────────────────────────────────────────────
+    async Task CargarResultadosAsync()
+    {
+        if (_idCompetenciaSeleccionada == 0)
+        {
+            resultados  = [];
+            errorCarga  = "";
+            StateHasChanged();
+            return;
+        }
+
+        cargandoResultados = true;
+        errorCarga         = "";
+        StateHasChanged();
+
+        try
+        {
+            var dtos = await ProgramacionApiService.ObtenerResultadosAsync(
+                SesionService.Ficha, _idCompetenciaSeleccionada);
+
+            resultados = dtos.Select(d => new ResultadoVm
+            {
+                IdResultado              = d.IdResultado,
+                Nombre                   = d.Nombre,
+                Estado                   = d.Estado,
+                IdInstructorSeleccionado = d.IdInstructor ?? 0,
+                NombreInstructor         = d.NombreInstructor,
+                HorasProgramadas         = d.HorasProgramadas ?? 0,
+                FechaInicioInput         = d.FechaInicio.HasValue
+                    ? new DateTime(d.FechaInicio.Value, TimeOnly.MinValue) : null,
+                FechaFinInput            = d.FechaFin.HasValue
+                    ? new DateTime(d.FechaFin.Value, TimeOnly.MinValue) : null,
+                HoraInicio               = d.HoraInicio,
+                HoraFinal                = d.HoraFin,
+                // Completado sin datos de programación completos → el usuario debe registrarlos
+                NecesitaProgramacion     = d.Estado == "Completado"
+                                           && (d.IdInstructor is null
+                                               || d.HorasProgramadas is null
+                                               || d.FechaInicio is null
+                                               || d.FechaFin is null),
+                JuiciosAprobados         = d.JuiciosAprobados,
+                TotalJuicios             = d.TotalJuicios,
+                Juicios                  = d.Juicios
+                    .Select(j => new JuicioVm(j.NombreCompleto, j.Juicio))
+                    .ToList()
+            }).ToList();
+
+            // No se auto-rellena ningún campo. Todo dato debe ser ingresado
+            // explícitamente por el usuario, sin inferencias del sistema.
+        }
+        catch
+        {
+            resultados = [];
+            errorCarga = "No se pudieron cargar los resultados. Verifique la conexión e intente nuevamente.";
+        }
+        finally
+        {
+            cargandoResultados = false;
+            StateHasChanged();
+        }
+    }
+
+    // ─── Configuración de la FichaCompetencia ────────────────────────────────
+
+    // Pre-carga los valores actuales del FC (si ya estaba configurado) en los campos del formulario.
+    void CargarConfiguracionFc(int idCompetencia)
+    {
+        mensajeConfig   = "";
+        configExitosa   = false;
+        guardandoConfig = false;
+
+        var fc = fichaCompetencias.FirstOrDefault(x => x.IdCompetencia == idCompetencia);
+        if (fc is null)
+        {
+            fcFechaInicio   = null;
+            fcFechaFin      = null;
+            fcTotalHoras    = 0;
+            fcYaConfigurada = false;
+            return;
+        }
+
+        fcFechaInicio = fc.FechaInicio.HasValue ? new DateTime(fc.FechaInicio.Value, TimeOnly.MinValue) : null;
+        fcFechaFin    = fc.FechaFin.HasValue    ? new DateTime(fc.FechaFin.Value,    TimeOnly.MinValue) : null;
+        // Si hay TotalHoras configurado, usarlo; si no, pre-llenar con HorasAsignadas del catálogo.
+        fcTotalHoras = fc.TotalHoras ?? fc.HorasAsignadas;
+
+        // La FC está configurada en BD si los tres campos vienen con valor real guardado.
+        fcYaConfigurada = fc.FechaInicio.HasValue && fc.FechaFin.HasValue && fc.TotalHoras.HasValue;
+    }
+
+    void ActualizarResumenFechas() { /* el resumen ya se renderiza desde fcFechaInicio/fcFechaFin */ }
+
+    async Task GuardarConfiguracionAsync()
+    {
+        mensajeConfig   = "";
+        guardandoConfig = true;
+
+        if (!fcFechaInicio.HasValue || !fcFechaFin.HasValue)
+        {
+            mensajeConfig = "Ingrese las fechas de inicio y fin de la competencia.";
+            configExitosa = false; guardandoConfig = false; return;
+        }
+        if (fcTotalHoras <= 0)
+        {
+            mensajeConfig = "El total de horas debe ser mayor a 0.";
+            configExitosa = false; guardandoConfig = false; return;
+        }
+
+        var dto = new ConfigurarFichaCompetenciaDTO
+        {
+            NumeroFicha   = SesionService.Ficha,
+            IdCompetencia = _idCompetenciaSeleccionada,
+            FechaInicio   = DateOnly.FromDateTime(fcFechaInicio.Value),
+            FechaFin      = DateOnly.FromDateTime(fcFechaFin.Value),
+            TotalHoras    = fcTotalHoras
+        };
+
+        var resp = await ProgramacionApiService.ConfigurarFichaCompetenciaAsync(dto);
+        mensajeConfig = resp.Mensaje;
+        configExitosa = resp.esExitoso;
+
+        if (resp.esExitoso)
+        {
+            // Actualizar el FC en la lista local para reflejar los nuevos valores
+            var fc = fichaCompetencias.FirstOrDefault(x => x.IdCompetencia == _idCompetenciaSeleccionada);
+            if (fc is not null)
+            {
+                fc.FechaInicio = dto.FechaInicio;
+                fc.FechaFin    = dto.FechaFin;
+                fc.TotalHoras  = dto.TotalHoras;
+            }
+            // Solo aquí, tras confirmación de BD, se oculta el panel de configuración.
+            fcYaConfigurada = true;
+            editandoConfig  = false;   // volver a modo lectura tras edición
+        }
+
+        guardandoConfig = false;
+    }
+
+    // ─── Selección de resultado ──────────────────────────────────────────────
+    void SeleccionarResultado(ResultadoVm r)
+    {
+        foreach (var res in resultados) { res.Seleccionado = false; res.Editando = false; }
+        r.Seleccionado = true;
+    }
+
+    // ─── Programar resultado ─────────────────────────────────────────────────
+    async Task Programar(ResultadoVm r)
+    {
+        r.Mensaje  = "";
+        r.Guardando = true;
+
+        if (r.IdInstructorSeleccionado == 0)
+        {
+            r.Mensaje = "Seleccione un instructor."; r.EsExitoso = false; r.Guardando = false; return;
+        }
+        if (r.HorasProgramadas <= 0)
+        {
+            r.Mensaje = "Las horas deben ser mayores a 0."; r.EsExitoso = false; r.Guardando = false; return;
+        }
+        if (!r.FechaInicioInput.HasValue || !r.FechaFinInput.HasValue)
+        {
+            r.Mensaje = "Ingrese las fechas de inicio y fin."; r.EsExitoso = false; r.Guardando = false; return;
+        }
+        if (!r.HoraInicio.HasValue || !r.HoraFinal.HasValue)
+        {
+            r.Mensaje = "Ingrese la hora de inicio y fin."; r.EsExitoso = false; r.Guardando = false; return;
+        }
+
+        var dto = new ProgramarResultadoDTO
+        {
+            NumeroFicha      = SesionService.Ficha,        // ficha del contexto de sesión
+            IdCompetencia    = _idCompetenciaSeleccionada,  // competencia seleccionada del catálogo
+            IdResultado      = r.IdResultado,
+            IdInstructor     = r.IdInstructorSeleccionado,
+            FechaInicio      = DateOnly.FromDateTime(r.FechaInicioInput.Value),
+            FechaFin         = DateOnly.FromDateTime(r.FechaFinInput.Value),
+            HoraInicio       = r.HoraInicio!.Value,
+            HoraFin          = r.HoraFinal!.Value,
+            HorasProgramadas = r.HorasProgramadas
+        };
+
+        var resp = await ProgramacionApiService.ProgramarResultadoAsync(dto);
+
+        r.Mensaje   = resp.Mensaje;
+        r.EsExitoso = resp.esExitoso;
+        r.Guardando = false;
+
+        if (resp.esExitoso)
+        {
+            // Los Completados conservan su estado académico; solo se quita la advertencia.
+            if (r.Estado != "Completado")
+                r.Estado = "Programado";
+            else
+                r.NecesitaProgramacion = false;
+
+            // Volver a modo lectura tras guardar exitosamente
+            r.Editando = false;
+
+            r.NombreInstructor = instructores
+                .FirstOrDefault(i => i.IdInstructor == r.IdInstructorSeleccionado)
+                ?.Nombres ?? "";
+        }
+    }
+
+    // ─── Eliminar programación de un resultado ───────────────────────────────
+    async Task EliminarProgramacion(ResultadoVm r)
+    {
+        r.Eliminando = true;
+        r.Mensaje    = "";
+
+        var resp = await ProgramacionApiService.EliminarProgramacionResultadoAsync(r.IdResultado);
+
+        r.Eliminando = false;
+        r.Mensaje    = resp.Mensaje;
+        r.EsExitoso  = resp.esExitoso;
+
+        if (resp.esExitoso)
+        {
+            r.Estado                   = "Pendiente";
+            r.Editando                 = false;
+            r.IdInstructorSeleccionado = 0;
+            r.NombreInstructor         = "";
+            r.HorasProgramadas         = 0;
+            r.FechaInicioInput         = null;
+            r.FechaFinInput            = null;
+            r.HoraInicio               = null;
+            r.HoraFinal                = null;
+            r.DiasCalculados           = 0;
+        }
+    }
+
+    // ─── #2 Autocalcular fecha fin ───────────────────────────────────────────
+    // FechaFin = FechaInicio + (diasNecesarios - 1)
+    // diasNecesarios = ceil(HorasProgramadas / horasDiarias)
+    void ActualizarFechaFin(ResultadoVm r)
+    {
+        if (r.HorasProgramadas <= 0     ||
+            !r.FechaInicioInput.HasValue ||
+            !r.HoraInicio.HasValue       ||
+            !r.HoraFinal.HasValue) return;
+
+        double horasDiarias = (r.HoraFinal.Value - r.HoraInicio.Value).TotalHours;
+        if (horasDiarias <= 0) return;
+
+        int diasNecesarios = (int)Math.Ceiling(r.HorasProgramadas / horasDiarias);
+
+        DateOnly fechaInicio = DateOnly.FromDateTime(r.FechaInicioInput.Value);
+        DateOnly fechaFin    = fechaInicio.AddDays(diasNecesarios - 1);
+
+        r.FechaFinInput  = new DateTime(fechaFin, TimeOnly.MinValue);
+        r.DiasCalculados = diasNecesarios;
+    }
+
+    // ─── Navegación ──────────────────────────────────────────────────────────
+    void Navegar() => nav.NavigateTo($"/fichas/{SesionService.Ficha}");
+
+    // ─── ViewModel local ─────────────────────────────────────────────────────
+    class ResultadoVm
+    {
+        public int      IdResultado              { get; set; }
+        public string   Nombre                   { get; set; } = "";
+        public string   Estado                   { get; set; } = "Pendiente";
+        public bool     Seleccionado             { get; set; }
+        /// <summary>
+        /// true cuando el usuario hizo clic en "Editar" sobre un resultado Programado.
+        /// Pasa de la vista de solo lectura al formulario de edición.
+        /// </summary>
+        public bool     Editando                 { get; set; }
+        public int      IdInstructorSeleccionado { get; set; }
+        public string   NombreInstructor         { get; set; } = "";
+        public int      HorasProgramadas         { get; set; }
+        public DateTime? FechaInicioInput        { get; set; }
+        public DateTime? FechaFinInput           { get; set; }
+        public TimeOnly? HoraInicio              { get; set; }
+        public TimeOnly? HoraFinal               { get; set; }
+        public bool     Guardando                { get; set; }
+        public bool     Eliminando               { get; set; }
+        public string   Mensaje                  { get; set; } = "";
+        public bool     EsExitoso                { get; set; }
+        public int      DiasCalculados           { get; set; }
+
+        // True cuando el resultado fue marcado Completado por SOFIA pero aún no
+        // tiene instructor, horas ni fechas de programación registradas.
+        public bool NecesitaProgramacion { get; set; }
+
+        // ── Juicios evaluativos ───────────────────────────────────────────────
+        public bool           Expandido        { get; set; }
+        public int            JuiciosAprobados { get; set; }
+        public int            TotalJuicios     { get; set; }
+        public List<JuicioVm> Juicios          { get; set; } = [];
+    }
+
+    record JuicioVm(string NombreCompleto, string Juicio);
+}

@@ -1,0 +1,41 @@
+@inherits LayoutComponentBase
+@using AdsoLabs.Web.Services
+@inject SesionService SesionService
+
+<div class="page">
+    <main>
+        <div class="top-row">
+            <div class="topbar-left">
+                <div class="user-circle">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <div class="welcome-text">
+                    <h5>Bienvenido, @SesionService.Nombres</h5>
+                    <span>Tus datos personales y configuración de cuenta.</span>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <PanelNotificaciones />
+                <div class="date-circle">@DateTime.Now.Day</div>
+                <div>
+                    <div class="dia">@DateTime.Now.ToString("ddd"),</div>
+                    <div class="mes">@DateTime.Now.ToString("MMMM")</div>
+                </div>
+                <a href="/logouthandler" class="topbar-logout">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Cerrar Sesión</span>
+                </a>
+            </div>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>

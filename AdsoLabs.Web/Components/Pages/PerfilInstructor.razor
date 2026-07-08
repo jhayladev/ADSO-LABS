@@ -1,0 +1,622 @@
+@page "/perfil-instructor/{IdInstructor:int}"
+@using AdsoLabs.Application.DTOs.Fichas
+@using AdsoLabs.Application.DTOs.Instructor
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@inject NavigationManager nav
+@inject InstructorApiService InstructorApiService
+@inject FichaApiService FichaApiService
+@inject SesionService SesionService
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+@if (cargando)
+{
+	<div class="pi-root">
+		<div class="pi-cargando">
+			<div class="spinner-border pi-spinner" role="status"></div>
+			<p>Cargando perfil...</p>
+		</div>
+	</div>
+}
+else if (instructor == null)
+{
+	<div class="pi-root">
+		<p class="pi-vacio">No se encontró el instructor.</p>
+	</div>
+}
+else
+{
+<div class="pi-root">
+	<h1 class="pi-titulo">Perfil Instructor Académico</h1>
+	<p class="pi-subtitulo">Datos e información académica del instructor.</p>
+
+	@* ── Tarjeta de perfil ── *@
+	<div class="pi-card pi-perfil-card">
+		<div class="pi-avatar">
+			<span class="pi-iniciales">@GetIniciales(instructor.Nombres, instructor.Apellidos)</span>
+		</div>
+
+		<div class="pi-perfil-info">
+			<h2 class="pi-perfil-nombre">@instructor.Nombres @instructor.Apellidos</h2>
+			<span class="pi-badge @(instructor.Activo ? "pi-badge-ok" : "pi-badge-off")">
+				@(instructor.Activo ? "Activo" : "Inactivo")
+			</span>
+			<p class="pi-perfil-esp-label">Especialidad</p>
+			<p class="pi-perfil-esp-valor">@(instructor.Especialidad ?? "Sin especificar")</p>
+		</div>
+
+		<div class="pi-divider-v"></div>
+
+		<div class="pi-contacto-lista">
+			<div class="pi-contacto-item">
+				<div class="pi-contacto-icon"><i class="bi bi-person-vcard"></i></div>
+				<div>
+					<span class="pi-contacto-label">@instructor.TipoDocumento</span>
+					<span class="pi-contacto-valor">@instructor.NumeroDocumento</span>
+				</div>
+			</div>
+			<div class="pi-contacto-item">
+				<div class="pi-contacto-icon"><i class="bi bi-envelope"></i></div>
+				<div>
+					<span class="pi-contacto-label">Correo</span>
+					<span class="pi-contacto-valor">@instructor.Correo</span>
+				</div>
+			</div>
+			<div class="pi-contacto-item">
+				<div class="pi-contacto-icon"><i class="bi bi-telephone"></i></div>
+				<div>
+					<span class="pi-contacto-label">Teléfono</span>
+					<span class="pi-contacto-valor">@(instructor.Telefono ?? "—")</span>
+				</div>
+			</div>
+		</div>
+
+		@if (SesionService.IdUsuario == instructor.IdUsuario || SesionService.EsAdministrador)
+		{
+			@if (!modoEdicion)
+			{
+				<button class="pi-btn-editar-contacto" @onclick="AbrirEdicion">
+					<i class="bi bi-pencil-square"></i> Editar contacto
+				</button>
+			}
+			else
+			{
+				<div class="pi-form-edicion">
+					<div class="pi-form-grupo">
+						<label class="pi-form-label">Correo</label>
+						<input type="email" class="pi-input" @bind="correoEdicion" placeholder="correo@ejemplo.com" />
+					</div>
+					<div class="pi-form-grupo">
+						<label class="pi-form-label">Teléfono</label>
+						<input type="text" class="pi-input" @bind="telefonoEdicion" placeholder="Número de teléfono" />
+					</div>
+					@if (!string.IsNullOrEmpty(mensajeEdicion))
+					{
+						<span class="pi-edicion-msg @(edicionExitosa ? "pi-msg-ok" : "pi-msg-err")">
+							<i class="bi @(edicionExitosa ? "bi-check-circle" : "bi-exclamation-circle")"></i>
+							@mensajeEdicion
+						</span>
+					}
+					<div class="pi-form-acciones">
+						<button class="pi-btn-guardar" @onclick="GuardarContacto" disabled="@guardando">
+							@(guardando ? "Guardando..." : "Guardar")
+						</button>
+						<button class="pi-btn-cancelar" @onclick="CancelarEdicion">Cancelar</button>
+					</div>
+				</div>
+			}
+		}
+	</div>
+
+	@* ── Grid principal ── *@
+	<div class="pi-main-grid">
+
+		@* Columna izquierda — Fichas / Competencias *@
+		<div class="pi-col-izq">
+			<div class="pi-card pi-tabs-card">
+				@* Tabs *@
+				<div class="pi-tabs">
+					<button class="pi-tab @(seccionActiva == 1 ? "pi-tab-activo" : "")"
+							@onclick="() => SeccionActiva(1)">
+						<i class="bi bi-file-earmark-text"></i> Fichas
+					</button>
+					<button class="pi-tab @(seccionActiva == 2 ? "pi-tab-activo" : "")"
+							@onclick="() => CambiarACompetencias()">
+						<i class="bi bi-patch-check"></i> Competencias
+					</button>
+					<button class="pi-tab @(seccionActiva == 3 ? "pi-tab-activo" : "")"
+							@onclick="() => CambiarAHorario()">
+						<i class="bi bi-calendar-week"></i> Horario
+					</button>
+				</div>
+
+				@* ── Tab: Fichas ── *@
+				@if (seccionActiva == 1)
+				{
+					<div class="pi-tab-content">
+						<div class="pi-card-header">
+							<div>
+								<h6 class="pi-card-titulo">Fichas Asociadas</h6>
+								<p class="pi-card-subtitulo">Fichas en las que participa el instructor.</p>
+							</div>
+							<i class="bi bi-journal-bookmark pi-card-icon"></i>
+						</div>
+
+						@if (!instructor.FichasAsignadas.Any())
+						{
+							<p class="pi-vacio">Este instructor no tiene fichas asignadas.</p>
+						}
+						else
+						{
+							<div class="pi-fichas-lista @(mostrarFichas ? "pi-scroll" : "")">
+								@foreach (var ficha in FichasVisibles)
+								{
+									<div class="pi-ficha-row">
+										<div class="pi-ficha-icon @(ficha.Activa ? "pi-icon-verde" : "pi-icon-azul")">
+											<i class="bi bi-folder2"></i>
+										</div>
+										<div class="pi-ficha-info">
+											<span class="pi-ficha-num">@ficha.NumeroFicha</span>
+											<span class="pi-ficha-prog">@ficha.Programa</span>
+											<span class="pi-ficha-meta">@(ficha.Jornada ?? "—") · @(ficha.Modalidad ?? "—")</span>
+										</div>
+										<div class="pi-ficha-prog-col">
+											<div class="pi-prog-header">
+												<span class="pi-prog-label">Progreso</span>
+												<span class="pi-prog-pct">@ficha.Progreso%</span>
+											</div>
+											<div class="pi-prog-track">
+												<div class="pi-prog-fill" style="width: @ficha.Progreso%"></div>
+											</div>
+										</div>
+										<div class="pi-ficha-right">
+											<span class="pi-badge @(ficha.Activa ? "pi-badge-ok" : "pi-badge-info")">
+												@(ficha.Activa ? "Activa" : "Finalizada")
+											</span>
+											<button class="pi-btn-detalle"
+													@onclick="() => IrADetalleFicha(ficha.NumeroFicha)">
+												Ver Detalle
+											</button>
+										</div>
+									</div>
+								}
+							</div>
+
+							@if (instructor.FichasAsignadas.Count > 3)
+							{
+								<button class="pi-btn-ver-mas"
+										@onclick="() => mostrarFichas = !mostrarFichas">
+									@(mostrarFichas ? "Ver menos" : $"Ver más ({instructor.FichasAsignadas.Count - 3} más)")
+									<i class="bi @(mostrarFichas ? "bi-chevron-up" : "bi-chevron-down")"></i>
+								</button>
+							}
+						}
+					</div>
+				}
+
+				@* ── Tab: Competencias ── *@
+				@if (seccionActiva == 2)
+				{
+					<div class="pi-tab-content">
+						<div class="pi-card-header">
+							<div>
+								<h6 class="pi-card-titulo">Competencias asignadas</h6>
+								<p class="pi-card-subtitulo">ADSO – Análisis y Desarrollo de Software.</p>
+							</div>
+							@if (instructor.FichasAsignadas.Any())
+							{
+								<div class="pi-dropdown-wrap">
+									<button class="pi-ficha-pill" @onclick="ToggleDropdown">
+										<i class="bi bi-journal-bookmark"></i>
+										@(fichaSeleccionada == TODAS ? "Todas las fichas" : $"Ficha: {fichaSeleccionada}")
+										<i class="bi @(mostrarDropdown ? "bi-chevron-up" : "bi-chevron-down")"></i>
+									</button>
+									@if (mostrarDropdown)
+									{
+										<div class="pi-dropdown-menu">
+											<div class="pi-dropdown-item pi-dropdown-todas"
+												 @onclick="() => SeleccionarFicha(TODAS)">
+												<i class="bi bi-collection"></i> Todas las fichas
+											</div>
+											@foreach (var f in instructor.FichasAsignadas)
+											{
+												<div class="pi-dropdown-item"
+													 @onclick="() => SeleccionarFicha(f.NumeroFicha)">
+													Ficha @f.NumeroFicha
+												</div>
+											}
+										</div>
+									}
+								</div>
+							}
+						</div>
+
+						@if (cargandoCompetencias)
+						{
+							<p class="pi-vacio">Cargando competencias...</p>
+						}
+						else if (!MisCompetencias.Any())
+						{
+							<p class="pi-vacio">No hay competencias asignadas a este instructor en esta ficha.</p>
+						}
+						else
+						{
+							<div class="pi-comp-lista @(mostrarCompetencias ? "pi-scroll" : "")">
+								@foreach (var comp in CompetenciasVisibles)
+								{
+									var estado   = MapearEstado(comp.Estado);
+									var progreso = comp.TotalHoras > 0
+										? (int)Math.Round(100.0 * comp.HorasEjecutadas / comp.TotalHoras.Value)
+										: 0;
+
+									<div class="pi-comp-row">
+										<div class="pi-comp-icon @GetCompIconClass(estado)">
+											<i class="bi @GetCompIconName(estado)"></i>
+										</div>
+										<div class="pi-comp-info">
+											<span class="pi-comp-nombre">@comp.Nombre</span>
+											<span class="pi-comp-codigo">@comp.Codigo</span>
+										</div>
+										<div class="pi-comp-prog-col">
+											<div class="pi-prog-header">
+												<span class="pi-prog-label">Progreso</span>
+												<span class="pi-prog-pct">@progreso%</span>
+											</div>
+											<div class="pi-prog-track">
+												<div class="pi-prog-fill @GetProgClass(estado)"
+													 style="width: @progreso%"></div>
+											</div>
+										</div>
+										<div class="pi-comp-right">
+											<span class="pi-badge @GetBadgeClass(estado)">@estado</span>
+										</div>
+									</div>
+								}
+							</div>
+
+							@if (MisCompetencias.Count > 3)
+							{
+								<button class="pi-btn-ver-mas"
+										@onclick="() => mostrarCompetencias = !mostrarCompetencias">
+									@(mostrarCompetencias ? "Ver menos" : $"Ver más ({MisCompetencias.Count - 3} más)")
+									<i class="bi @(mostrarCompetencias ? "bi-chevron-up" : "bi-chevron-down")"></i>
+								</button>
+							}
+						}
+					</div>
+				}
+				@* -- Tab: Horario -- *@
+				@if (seccionActiva == 3)
+				{
+					<div class="pi-tab-content">
+						<div class="pi-card-header">
+							<div>
+								<h6 class="pi-card-titulo">Horario</h6>
+								<p class="pi-card-subtitulo">Programaciones activas del instructor (fecha y franja horaria diaria).</p>
+							</div>
+						</div>
+
+						@if (cargandoHorario)
+						{
+							<p class="pi-vacio">Cargando horario...</p>
+						}
+						else if (!horario.Any())
+						{
+							<p class="pi-vacio">Este instructor no tiene resultados programados actualmente.</p>
+						}
+						else
+						{
+							<div class="pi-comp-lista">
+								@foreach (var item in horario)
+								{
+									<div class="pi-comp-row">
+										<div class="pi-comp-icon">
+											<i class="bi bi-calendar-week"></i>
+										</div>
+										<div class="pi-comp-info">
+											<span class="pi-comp-nombre">@item.NombreCompetencia (@item.CodigoResultado)</span>
+											<span class="pi-comp-codigo">
+												Ficha @item.NumeroFicha
+												&middot; @(item.FechaInicio?.ToString("dd/MM/yyyy")) - @(item.FechaFin?.ToString("dd/MM/yyyy"))
+												&middot; @(item.HoraInicio?.ToString("HH:mm")) - @(item.HoraFin?.ToString("HH:mm"))
+											</span>
+										</div>
+										<div class="pi-comp-right">
+											<span class="pi-badge">@item.Estado</span>
+										</div>
+									</div>
+								}
+							</div>
+						}
+					</div>
+				}
+			</div>
+		</div>
+
+		@* Columna derecha — Avisos *@
+		<div class="pi-col-der">
+			<div class="pi-card pi-avisos-card">
+				<div class="pi-card-header">
+					<div>
+						<h6 class="pi-card-titulo">Avisos Importantes</h6>
+						<p class="pi-card-subtitulo">Notificaciones del instructor.</p>
+					</div>
+					<i class="bi bi-bell-fill pi-card-icon"></i>
+				</div>
+
+				@if (cargandoAvisos)
+				{
+					<p class="pi-vacio">Cargando avisos...</p>
+				}
+				else if (!avisos.Any())
+				{
+					<div class="pi-aviso-vacio">
+						<i class="bi bi-bell-slash"></i>
+						<span>Sin avisos activos.</span>
+					</div>
+				}
+				else
+				{
+					<div class="pi-aviso-lista">
+						@foreach (var aviso in avisos)
+						{
+							<div class="pi-aviso-item">
+								<span class="pi-aviso-dot @GetAvisoDotClass(aviso.Tipo)"></span>
+								<div class="pi-aviso-texto">
+									<span class="pi-aviso-titulo">@aviso.Titulo</span>
+									<span class="pi-aviso-desc">@aviso.Descripcion</span>
+								</div>
+								<span class="pi-aviso-badge @GetAvisoBadgeClass(aviso.Tipo)">
+									<i class="bi @GetAvisoIcon(aviso.Tipo)"></i>
+								</span>
+							</div>
+						}
+					</div>
+				}
+			</div>
+		</div>
+
+	</div>
+</div>
+}
+
+@code {
+	[Parameter] public int IdInstructor { get; set; }
+
+	private const string TODAS = "__TODAS__";
+
+	private InstructorDetalleDTO?         instructor           = null;
+	private List<CompetenciaFichaDTO>     competencias         = [];
+	private List<AvisoInstructorDTO>      avisos               = [];
+	private List<HorarioInstructorItemDTO> horario             = [];
+	private bool cargando              = true;
+	private bool cargandoCompetencias  = false;
+	private bool cargandoAvisos        = false;
+	private bool cargandoHorario       = false;
+
+	private int  seccionActiva         = 1;
+	private bool mostrarFichas         = false;
+	private bool mostrarCompetencias   = false;
+	private bool mostrarDropdown       = false;
+	private string fichaSeleccionada   = "";
+
+	// Edición de contacto
+	private bool   modoEdicion    = false;
+	private bool   guardando      = false;
+	private bool   edicionExitosa = false;
+	private string mensajeEdicion = "";
+	private string correoEdicion  = "";
+	private string? telefonoEdicion;
+
+	private List<CompetenciaFichaDTO> MisCompetencias =>
+		competencias.Where(c => c.EsMiCompetencia).ToList();
+
+	private IEnumerable<FichaResumenInstructorDTO> FichasVisibles =>
+		mostrarFichas ? instructor!.FichasAsignadas : instructor!.FichasAsignadas.Take(3);
+
+	private IEnumerable<CompetenciaFichaDTO> CompetenciasVisibles =>
+		mostrarCompetencias ? MisCompetencias : MisCompetencias.Take(3);
+
+	protected override async Task OnParametersSetAsync()
+	{
+		cargando       = true;
+		cargandoAvisos = true;
+		modoEdicion    = false;
+		mensajeEdicion = "";
+
+		instructor = await InstructorApiService.ObtenerDetallesInstructorAsync(IdInstructor);
+
+		if (instructor?.FichasAsignadas.Any() == true)
+			fichaSeleccionada = TODAS;
+
+		correoEdicion   = instructor?.Correo   ?? "";
+		telefonoEdicion = instructor?.Telefono;
+
+		avisos         = await InstructorApiService.ObtenerAvisosInstructorAsync(IdInstructor);
+		cargandoAvisos = false;
+		cargando       = false;
+	}
+
+	private void SeccionActiva(int valor) => seccionActiva = valor;
+
+	private async Task CambiarAHorario()
+	{
+		seccionActiva = 3;
+		if (horario.Any() || cargandoHorario) return;
+
+		cargandoHorario = true;
+		horario         = await InstructorApiService.ObtenerHorarioInstructorAsync(IdInstructor);
+		cargandoHorario = false;
+	}
+
+	private async Task CambiarACompetencias()
+	{
+		seccionActiva = 2;
+		if (instructor?.FichasAsignadas.Any() != true) return;
+
+		if (fichaSeleccionada == TODAS)
+			await CargarTodasCompetencias();
+		else if (!string.IsNullOrEmpty(fichaSeleccionada))
+			await CargarCompetencias(fichaSeleccionada);
+	}
+
+	private async Task CargarCompetencias(string numeroFicha)
+	{
+		cargandoCompetencias = true;
+		competencias         = await FichaApiService.ObtenerFichaCompetenciaAsync(numeroFicha, instructor!.IdUsuario);
+		mostrarCompetencias  = false;
+		cargandoCompetencias = false;
+	}
+
+	private async Task CargarTodasCompetencias()
+	{
+		cargandoCompetencias = true;
+		var tareas = instructor!.FichasAsignadas
+			.Select(f => FichaApiService.ObtenerFichaCompetenciaAsync(f.NumeroFicha, instructor.IdUsuario));
+		var resultados = await Task.WhenAll(tareas);
+		// Combina todas las competencias donde el instructor está asignado,
+		// sin duplicar la misma FichaCompetencia (IdFichaCompetencia único por ficha+competencia).
+		competencias = resultados
+			.SelectMany(r => r)
+			.Where(c => c.EsMiCompetencia)
+			.GroupBy(c => c.IdFichaCompetencia)
+			.Select(g => g.First())
+			.ToList();
+		mostrarCompetencias  = false;
+		cargandoCompetencias = false;
+	}
+
+	private async Task SeleccionarFicha(string numeroFicha)
+	{
+		fichaSeleccionada = numeroFicha;
+		mostrarDropdown   = false;
+		if (numeroFicha == TODAS)
+			await CargarTodasCompetencias();
+		else
+			await CargarCompetencias(numeroFicha);
+	}
+
+	private void ToggleDropdown() => mostrarDropdown = !mostrarDropdown;
+
+	private void IrADetalleFicha(string nf) => nav.NavigateTo($"/fichas/{nf}");
+
+	private void AbrirEdicion()
+	{
+		correoEdicion   = instructor?.Correo   ?? "";
+		telefonoEdicion = instructor?.Telefono;
+		mensajeEdicion  = "";
+		edicionExitosa  = false;
+		modoEdicion     = true;
+	}
+
+	private void CancelarEdicion()
+	{
+		modoEdicion    = false;
+		mensajeEdicion = "";
+	}
+
+	private async Task GuardarContacto()
+	{
+		if (string.IsNullOrWhiteSpace(correoEdicion))
+		{
+			mensajeEdicion = "El correo no puede estar vacío.";
+			edicionExitosa = false;
+			return;
+		}
+
+		guardando = true;
+		mensajeEdicion = "";
+
+		var dto = new ActualizarContactoInstructorDTO
+		{
+			IdUsuario = instructor!.IdUsuario,
+			Correo    = correoEdicion.Trim(),
+			Telefono  = string.IsNullOrWhiteSpace(telefonoEdicion) ? null : telefonoEdicion.Trim()
+		};
+
+		var resultado = await InstructorApiService.ActualizarContactoInstructorAsync(dto);
+		guardando = false;
+
+		if (resultado.esExitoso)
+		{
+			instructor!.Correo   = dto.Correo;
+			instructor!.Telefono = dto.Telefono;
+			mensajeEdicion       = "Datos actualizados correctamente.";
+			edicionExitosa       = true;
+			modoEdicion          = false;
+		}
+		else
+		{
+			mensajeEdicion = resultado.Mensaje;
+			edicionExitosa = false;
+		}
+	}
+
+	private static string GetIniciales(string nombres, string apellidos)
+	{
+		var a = nombres.Trim().FirstOrDefault();
+		var b = apellidos.Trim().FirstOrDefault();
+		return $"{a}{b}".ToUpperInvariant();
+	}
+
+	private static string MapearEstado(string estado) => estado switch
+	{
+		"Vista"      => "Finalizada",
+		"En Curso"   => "En Curso",
+		"Programada" => "En Curso",
+		_            => "Próxima"
+	};
+
+	private static string GetCompIconClass(string estado) => estado switch
+	{
+		"En Curso"   => "pi-icon-verde",
+		"Finalizada" => "pi-icon-azul",
+		_            => "pi-icon-gris"
+	};
+
+	private static string GetCompIconName(string estado) => estado switch
+	{
+		"En Curso"   => "bi-file-earmark-text",
+		"Finalizada" => "bi-check-circle",
+		_            => "bi-file-earmark"
+	};
+
+	private static string GetBadgeClass(string estado) => estado switch
+	{
+		"En Curso"   => "pi-badge-ok",
+		"Finalizada" => "pi-badge-info",
+		_            => "pi-badge-gris"
+	};
+
+	private static string GetProgClass(string estado) => estado switch
+	{
+		"En Curso"   => "pi-prog-verde",
+		"Finalizada" => "pi-prog-azul",
+		_            => "pi-prog-gris"
+	};
+
+	private static string GetAvisoDotClass(string tipo) => tipo switch
+	{
+		"AprendizRiesgo" => "pi-dot-rojo",
+		"FichaVence"     => "pi-dot-amarillo",
+		_                => "pi-dot-naranja"
+	};
+
+	private static string GetAvisoBadgeClass(string tipo) => tipo switch
+	{
+		"AprendizRiesgo" => "pi-aviso-num-rojo",
+		"FichaVence"     => "pi-aviso-num-amarillo",
+		_                => "pi-aviso-num-naranja"
+	};
+
+	private static string GetAvisoIcon(string tipo) => tipo switch
+	{
+		"SinCalificar"   => "bi-exclamation-triangle",
+		"AprendizRiesgo" => "bi-person-exclamation",
+		"FichaVence"     => "bi-calendar-x",
+		_                => "bi-bell"
+	};
+}

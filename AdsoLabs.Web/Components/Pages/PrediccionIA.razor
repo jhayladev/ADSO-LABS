@@ -1,0 +1,726 @@
+@page "/prediccion-ia"
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@using AdsoLabs.Application.DTOs.PrediccionIA
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@inject SesionService SesionService
+@inject PrediccionIAApiService ApiService
+
+<PageTitle>Predicción IA</PageTitle>
+
+<section class="pia">
+    <h1 class="pia-titulo">Predicción IA</h1>
+    <p class="pia-subtitulo">Asignación inteligente de competencias y predicción de tendencias de aprendizaje.</p>
+
+    @* ── Pestañas ──────────────────────────────────────────────────── *@
+    <div class="pia-tabs">
+        <button class="pia-tab @(tabActiva == "asignacion" ? "pia-tab-activa" : "")"
+                @onclick='() => tabActiva = "asignacion"'>
+            <i class="bi bi-cpu-fill"></i>
+            Asignación de competencias
+        </button>
+        <button class="pia-tab @(tabActiva == "prediccion" ? "pia-tab-activa" : "")"
+                @onclick='() => CambiarTabAsync("prediccion")'>
+            <i class="bi bi-robot"></i>
+            Predicción de aprendizaje
+        </button>
+        @if (SesionService.EsAdministrador)
+        {
+            <button class="pia-tab @(tabActiva == "solicitudes" ? "pia-tab-activa" : "")"
+                    @onclick='() => CambiarTabAsync("solicitudes")'>
+                <i class="bi bi-inbox-fill"></i>
+                Solicitudes
+                @if (solicitudesPendientes > 0)
+                {
+                    <span class="pia-tab-badge">@solicitudesPendientes</span>
+                }
+            </button>
+        }
+    </div>
+
+    @* ── Alertas globales ─────────────────────────────────────────── *@
+    @if (mensajeExito is not null)
+    {
+        <div class="pia-alerta pia-alerta-ok">
+            <i class="bi bi-check-circle-fill"></i> @mensajeExito
+            <button class="pia-alerta-cerrar" @onclick='() => mensajeExito = null'><i class="bi bi-x"></i></button>
+        </div>
+    }
+    @if (mensajeError is not null)
+    {
+        <div class="pia-alerta pia-alerta-err">
+            <i class="bi bi-exclamation-circle-fill"></i> @mensajeError
+            <button class="pia-alerta-cerrar" @onclick='() => mensajeError = null'><i class="bi bi-x"></i></button>
+        </div>
+    }
+
+    @* ══════════════════════════════════════════════════════════════
+       TAB 1 — Asignación de competencias inteligente
+       ══════════════════════════════════════════════════════════════ *@
+    @if (tabActiva == "asignacion")
+    {
+        @if (cargandoCompatibilidad)
+        {
+            <div class="pia-skeleton-wrap">
+                <div class="pia-skeleton pia-skeleton-card"></div>
+                <div class="pia-skeleton pia-skeleton-card"></div>
+                <div class="pia-skeleton pia-skeleton-table"></div>
+            </div>
+        }
+        else if (errorCompatibilidad is not null)
+        {
+            <div class="pia-estado-error">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <p>@errorCompatibilidad</p>
+                <button class="pia-btn-retry" @onclick="CargarCompatibilidadAsync">Reintentar</button>
+            </div>
+        }
+        else if (compatibilidad is not null)
+        {
+            <div class="pia-seccion-header">
+                <div class="pia-icon-badge pia-icon-indigo">
+                    <i class="bi bi-cpu-fill"></i>
+                </div>
+                <div>
+                    <h2 class="pia-seccion-titulo">Asignación de competencias inteligente</h2>
+                    <p class="pia-seccion-sub">Sugerencias generadas por IA según el historial del instructor</p>
+                </div>
+            </div>
+
+            @* Fila superior: info instructor + compatibilidad *@
+            <div class="pia-top-grid">
+                <div class="pia-card">
+                    <h3 class="pia-card-titulo">Información del instructor</h3>
+                    <div class="pia-instructor-row">
+                        <div class="pia-avatar">@InicialAvatar()</div>
+                        <div class="pia-instructor-datos">
+                            <span class="pia-nombre">@compatibilidad.NombreInstructor</span>
+                            <div class="pia-badges-row">
+                                <span class="pia-badge pia-badge-esp">@compatibilidad.Especialidad</span>
+                                <span class="pia-badge pia-badge-activo">Activo</span>
+                            </div>
+                            @if (compatibilidad.FortalezasDetectadas.Count > 0)
+                            {
+                                <div class="pia-fortalezas-list">
+                                    @foreach (var f in compatibilidad.FortalezasDetectadas.Take(2))
+                                    {
+                                        <span class="pia-fortaleza-chip"><i class="bi bi-check2"></i> @f</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pia-card">
+                    <h3 class="pia-card-titulo">Resumen de compatibilidad</h3>
+                    <div class="pia-compat-row">
+                        <div class="pia-donut-wrap">
+                            <div class="pia-donut" style="background: conic-gradient(#4C2FBF @(compatibilidad.PorcentajeGeneral)%, #e5e7eb 0%)">
+                                <span class="pia-donut-val">@compatibilidad.PorcentajeGeneral%</span>
+                            </div>
+                        </div>
+                        <div class="pia-compat-texto">
+                            <span class="pia-compat-titulo">@(compatibilidad.PorcentajeGeneral >= 80 ? "Alta" : compatibilidad.PorcentajeGeneral >= 50 ? "Buena" : "Moderada") compatibilidad</span>
+                            <p class="pia-compat-desc">@compatibilidad.ResumenIA</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* Reglas de asignación *@
+            <div class="pia-reglas-grid">
+                <div class="pia-regla-card">
+                    <div class="pia-regla-icon"><i class="bi bi-journal-text"></i></div>
+                    <div class="pia-regla-texto">
+                        <span class="pia-regla-titulo">Coherencia curricular</span>
+                        <p>Las competencias se basan en el orden del programa y el avance de la ficha.</p>
+                    </div>
+                </div>
+                <div class="pia-regla-card">
+                    <div class="pia-regla-icon"><i class="bi bi-person-badge"></i></div>
+                    <div class="pia-regla-texto">
+                        <span class="pia-regla-titulo">Especialidad del instructor</span>
+                        <p>Las sugerencias se basan en tu especialidad: <strong>@compatibilidad.Especialidad</strong>.</p>
+                    </div>
+                </div>
+                <div class="pia-regla-card">
+                    <div class="pia-regla-icon"><i class="bi bi-pencil-square"></i></div>
+                    <div class="pia-regla-texto">
+                        <span class="pia-regla-titulo">Asignación manual</span>
+                        <p>El administrador realiza la asignación definitiva. Tu solicitud es orientativa.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pia-leyenda">
+                <span><span class="pia-dot pia-dot-alta"></span> Alta compatibilidad (80% - 100%)</span>
+                <span><span class="pia-dot pia-dot-media"></span> Compatibilidad media (50% - 79%)</span>
+                <span><span class="pia-dot pia-dot-baja"></span> Baja compatibilidad (0% - 49%)</span>
+            </div>
+
+            @* Tabla de sugerencias *@
+            <div class="pia-card">
+                <div class="pia-tabla-encabezado">
+                    <h3 class="pia-card-titulo">
+                        Sugerencias de competencias próximas
+                        <span class="pia-info-icon" title="Generadas por IA según tu historial y las fichas activas.">
+                            <i class="bi bi-info-circle"></i>
+                        </span>
+                    </h3>
+                </div>
+
+                @if (compatibilidad.Sugerencias.Count == 0)
+                {
+                    <p class="pia-vacio">No hay fichas disponibles para sugerencias en este momento.</p>
+                }
+                else
+                {
+                    <div class="pia-tabla-head">
+                        <span>Competencia</span>
+                        <span>Ficha</span>
+                        <span>Compatibilidad</span>
+                        <span>Acción</span>
+                    </div>
+
+                    @foreach (var s in compatibilidad.Sugerencias)
+                    {
+                        <div class="pia-fila">
+                            <div class="pia-comp-cell">
+                                <div class="pia-comp-icon-sm">
+                                    <i class="bi bi-code-slash"></i>
+                                </div>
+                                <div>
+                                    <span class="pia-comp-nombre">@s.NombreCompetencia</span>
+                                    <span class="pia-comp-razon">@s.Razonamiento</span>
+                                </div>
+                            </div>
+                            <div class="pia-ficha-cell">
+                                <span class="pia-ficha-num">Ficha @s.NumeroFicha</span>
+                                <span class="pia-ficha-fase-formativa" title="Fase actual de la ficha">
+                                    <i class="bi bi-signpost-split"></i> Ficha en @s.FaseActualFicha
+                                </span>
+                                <span class="pia-ficha-fase-formativa pia-ficha-fase-comp" title="Fase de esta competencia">
+                                    <i class="bi bi-bookmark-star"></i> Competencia: @NombreFase(s.FaseFormativa)
+                                </span>
+                                <span class="pia-ficha-fase">Jornada @s.Fase</span>
+                            </div>
+                            <div class="pia-compat-cell">
+                                <span class="pia-dot pia-dot-@CompatColor(s.Compatibilidad)"></span>
+                                <span>@s.Compatibilidad%</span>
+                            </div>
+                            <div class="pia-accion-cell">
+                                @if (SesionService.EsInstructor)
+                                {
+                                    @if (s.YaTieneSolicitudPendiente)
+                                    {
+                                        <span class="pia-btn-enviado"><i class="bi bi-clock"></i> Pendiente</span>
+                                    }
+                                    else if (enviandoSolicitudParaId == s.IdFichaCompetencia)
+                                    {
+                                        <button class="pia-btn-asignar" disabled>
+                                            <span class="pia-spinner"></span>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="pia-btn-asignar" @onclick='() => EnviarSolicitudAsync(s)'>Solicitar</button>
+                                    }
+                                }
+                                <i class="bi bi-chevron-right pia-chevron"></i>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        }
+    }
+
+    @* ══════════════════════════════════════════════════════════════
+       TAB 2 — Predicción inteligente de aprendizaje
+       ══════════════════════════════════════════════════════════════ *@
+    @if (tabActiva == "prediccion")
+    {
+        @* ── Paso 1: selector de competencia ──────────────────── *@
+        @if (competenciaSeleccionada is null)
+        {
+            <div class="pia-seccion-header">
+                <div class="pia-icon-badge pia-icon-robot">
+                    <i class="bi bi-robot"></i>
+                </div>
+                <div>
+                    <h2 class="pia-seccion-titulo">Predicción inteligente de aprendizaje</h2>
+                    <p class="pia-seccion-sub">Selecciona la competencia para generar tu predicción personalizada</p>
+                </div>
+            </div>
+
+            @if (cargandoCompetencias)
+            {
+                <div class="pia-skeleton-wrap">
+                    <div class="pia-skeleton pia-skeleton-card"></div>
+                    <div class="pia-skeleton pia-skeleton-card"></div>
+                </div>
+            }
+            else if (errorCompetencias is not null)
+            {
+                <div class="pia-estado-error">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <p>@errorCompetencias</p>
+                    <button class="pia-btn-retry" @onclick="CargarCompetenciasAsignadasAsync">Reintentar</button>
+                </div>
+            }
+            else if (competenciasAsignadas.Count == 0)
+            {
+                <div class="pia-vacio-centrado">
+                    <i class="bi bi-clipboard-x"></i>
+                    <p>No tienes resultados de aprendizaje asignados en ninguna competencia.</p>
+                </div>
+            }
+            else
+            {
+                <p class="pia-selector-hint">
+                    <i class="bi bi-info-circle"></i>
+                    La predicción se genera específicamente para la competencia y los resultados que tienes asignados.
+                </p>
+                <div class="pia-comp-selector-grid">
+                    @foreach (var c in competenciasAsignadas)
+                    {
+                        <button class="pia-comp-selector-card" @onclick='() => SeleccionarCompetenciaAsync(c)'>
+                            <div class="pia-comp-sel-icon">
+                                <i class="bi bi-journal-bookmark-fill"></i>
+                            </div>
+                            <div class="pia-comp-sel-body">
+                                <span class="pia-comp-sel-nombre">@c.NombreCompetencia</span>
+                                <span class="pia-comp-sel-ficha">Ficha @c.NumeroFicha</span>
+                                <span class="pia-comp-sel-codigo">Código @c.CodigoCompetencia</span>
+                                <div class="pia-comp-sel-resultados">
+                                    <span class="pia-comp-sel-rlabel">@c.Resultados.Count resultado@(c.Resultados.Count != 1 ? "s" : "") asignado@(c.Resultados.Count != 1 ? "s" : "")</span>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-right pia-chevron"></i>
+                        </button>
+                    }
+                </div>
+            }
+        }
+        else
+        {
+            @* ── Paso 2: predicción de la competencia seleccionada ── *@
+            <div class="pia-seccion-header pia-seccion-header-row">
+                <div class="pia-header-left">
+                    <button class="pia-btn-volver" @onclick="VolverSelectorCompetencia" title="Cambiar competencia">
+                        <i class="bi bi-arrow-left"></i>
+                    </button>
+                    <div class="pia-icon-badge pia-icon-robot">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div>
+                        <h2 class="pia-seccion-titulo">@competenciaSeleccionada.NombreCompetencia</h2>
+                        <p class="pia-seccion-sub">Ficha @competenciaSeleccionada.NumeroFicha · Código @competenciaSeleccionada.CodigoCompetencia</p>
+                    </div>
+                </div>
+                @if (prediccion is not null)
+                {
+                    <div class="pia-header-right">
+                        <div class="pia-timestamp">
+                            <span class="pia-ts-label">Última actualización:</span>
+                            <span class="pia-ts-val">@prediccion.GeneradoEn.ToString("dd/MM/yyyy - hh:mm tt")</span>
+                        </div>
+                        <button class="pia-btn-refresh" title="Actualizar" @onclick="RefrescarPrediccionAsync">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                }
+            </div>
+
+            @if (cargandoPrediccion)
+            {
+                <div class="pia-skeleton-wrap">
+                    <div class="pia-skeleton pia-skeleton-hero"></div>
+                    <div class="pia-skeleton pia-skeleton-grid4"></div>
+                    <div class="pia-skeleton pia-skeleton-card"></div>
+                </div>
+            }
+            else if (errorPrediccion is not null)
+            {
+                <div class="pia-estado-error">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <p>@errorPrediccion</p>
+                    <button class="pia-btn-retry" @onclick="() => CargarPrediccionAsync()">Reintentar</button>
+                </div>
+            }
+            else if (prediccion is not null)
+            {
+                @* Card hero gradiente *@
+                <div class="pia-hero-card">
+                    <div class="pia-hero-icon">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div class="pia-hero-body">
+                        <strong class="pia-hero-tendencia">@prediccion.TendenciaGeneral</strong>
+                        <p class="pia-hero-texto">@prediccion.DescripcionTendencia</p>
+                    </div>
+                    <div class="pia-hero-deco" aria-hidden="true">
+                        <svg viewBox="0 0 220 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <polyline points="0,65 45,42 90,54 135,18 175,32 220,8"
+                                      stroke="rgba(255,255,255,0.35)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <polyline points="0,72 45,55 90,64 135,36 175,48 220,26"
+                                      stroke="rgba(255,255,255,0.15)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="135" cy="18" r="4" fill="rgba(255,255,255,0.6)"/>
+                            <circle cx="220" cy="8"  r="3" fill="rgba(255,255,255,0.4)"/>
+                        </svg>
+                    </div>
+                </div>
+
+                @* Resultados asignados *@
+                <div class="pia-card pia-resultados-asignados">
+                    <h3 class="pia-card-titulo"><i class="bi bi-list-check"></i> Resultados de aprendizaje asignados</h3>
+                    <div class="pia-resultados-list">
+                        @foreach (var r in competenciaSeleccionada.Resultados)
+                        {
+                            <span class="pia-resultado-chip"><i class="bi bi-check2-circle"></i> @r</span>
+                        }
+                    </div>
+                </div>
+
+                @* Temáticas emergentes *@
+                <div class="pia-section-row">
+                    <h3 class="pia-section-titulo">Temáticas emergentes recomendadas</h3>
+                </div>
+                <div class="pia-tematicas-grid">
+                    @foreach (var t in prediccion.Tematicas)
+                    {
+                        <div class="pia-tematica-card">
+                            <div class="pia-num-badge">@t.Numero</div>
+                            <div class="pia-tematica-icon">
+                                <i class="bi @t.Icono"></i>
+                            </div>
+                            <span class="pia-tematica-titulo">@t.Titulo</span>
+                            <p class="pia-tematica-desc">@t.Descripcion</p>
+                            <span class="pia-relevancia @(t.Relevancia == "Alta" ? "pia-rel-alta" : "pia-rel-media")">
+                                @t.Relevancia relevancia
+                            </span>
+                        </div>
+                    }
+                </div>
+
+                @* Ruta de aprendizaje *@
+                <div class="pia-card pia-ruta-card">
+                    <h3 class="pia-card-titulo">Ruta de aprendizaje sugerida</h3>
+                    <div class="pia-ruta-steps">
+                        @for (int i = 0; i < prediccion.RutaAprendizaje.Count; i++)
+                        {
+                            var paso = prediccion.RutaAprendizaje[i];
+                            var idx  = i;
+                            <div class="pia-paso">
+                                <div class="pia-paso-num">@paso.Num</div>
+                                <strong class="pia-paso-titulo">@paso.Titulo</strong>
+                                <p class="pia-paso-desc">@paso.Descripcion</p>
+                            </div>
+                            if (idx < prediccion.RutaAprendizaje.Count - 1)
+                            {
+                                <div class="pia-paso-flecha">→</div>
+                            }
+                        }
+                    </div>
+                </div>
+
+                @* KPIs *@
+                <div class="pia-card">
+                    <h3 class="pia-card-titulo">Análisis de impacto para el programa ADSO</h3>
+                    <div class="pia-kpis-grid">
+                        @foreach (var k in prediccion.Kpis)
+                        {
+                            <div class="pia-kpi">
+                                <i class="bi @k.Icono pia-kpi-icon pia-kpi-color-@k.Color"></i>
+                                <span class="pia-kpi-label">@k.Etiqueta</span>
+                                <span class="pia-kpi-val">@k.Valor</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    }
+
+    @* ══════════════════════════════════════════════════════════════
+       TAB 3 — Solicitudes (solo Administrador)
+       ══════════════════════════════════════════════════════════════ *@
+    @if (tabActiva == "solicitudes" && SesionService.EsAdministrador)
+    {
+        <div class="pia-seccion-header">
+            <div class="pia-icon-badge pia-icon-indigo">
+                <i class="bi bi-inbox-fill"></i>
+            </div>
+            <div>
+                <h2 class="pia-seccion-titulo">Solicitudes de asignación</h2>
+                <p class="pia-seccion-sub">Solicitudes enviadas por instructores a través de la IA</p>
+            </div>
+        </div>
+
+        @if (cargandoSolicitudes)
+        {
+            <div class="pia-skeleton-wrap">
+                <div class="pia-skeleton pia-skeleton-table"></div>
+            </div>
+        }
+        else if (errorSolicitudes is not null)
+        {
+            <div class="pia-estado-error">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <p>@errorSolicitudes</p>
+                <button class="pia-btn-retry" @onclick="CargarSolicitudesAsync">Reintentar</button>
+            </div>
+        }
+        else if (solicitudes.Count == 0)
+        {
+            <div class="pia-vacio-centrado">
+                <i class="bi bi-inbox"></i>
+                <p>No hay solicitudes de asignación por el momento.</p>
+            </div>
+        }
+        else
+        {
+            <div class="pia-card">
+                <div class="pia-solic-tabla-head">
+                    <span>Instructor</span>
+                    <span>Competencia</span>
+                    <span>Ficha</span>
+                    <span>Compat.</span>
+                    <span>Estado</span>
+                    <span>Fecha</span>
+                    <span>Acciones</span>
+                </div>
+                @foreach (var s in solicitudes)
+                {
+                    <div class="pia-solic-fila">
+                        <span class="pia-solic-nombre">@s.NombreInstructor</span>
+                        <span class="pia-solic-comp" title="@s.RazonamientoIA">@s.NombreCompetencia</span>
+                        <span class="pia-ficha-num">@s.NumeroFicha</span>
+                        <span><span class="pia-dot pia-dot-@CompatColor(s.PorcentajeCompatibilidad)"></span> @s.PorcentajeCompatibilidad%</span>
+                        <span class="pia-solic-estado pia-solic-estado-@s.Estado.ToLower()">@s.Estado</span>
+                        <span class="pia-solic-fecha">@s.FechaSolicitud.ToString("dd/MM/yyyy")</span>
+                        <div class="pia-solic-acciones">
+                            @if (s.Estado == "Pendiente")
+                            {
+                                <button class="pia-btn-aprobar" @onclick='() => ResponderSolicitudAsync(s.IdSolicitud, "Aprobada")'>
+                                    <i class="bi bi-check-lg"></i> Aprobar
+                                </button>
+                                <button class="pia-btn-rechazar" @onclick='() => ResponderSolicitudAsync(s.IdSolicitud, "Rechazada")'>
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="pia-solic-resuelta">—</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+
+</section>
+
+@code {
+    private string tabActiva = "asignacion";
+
+    // Tab 1 — compatibilidad
+    private bool cargandoCompatibilidad = true;
+    private string? errorCompatibilidad;
+    private CompatibilidadResponseDTO? compatibilidad;
+
+    // Tab 2 — selector de competencia
+    private bool cargandoCompetencias;
+    private string? errorCompetencias;
+    private List<CompetenciaAsignadaDTO> competenciasAsignadas = [];
+    private CompetenciaAsignadaDTO? competenciaSeleccionada;
+
+    // Tab 2 — predicción de competencia seleccionada
+    private bool cargandoPrediccion;
+    private string? errorPrediccion;
+    private PrediccionAprendizajeDTO? prediccion;
+
+    // Tab 3 — solicitudes (admin)
+    private bool cargandoSolicitudes;
+    private string? errorSolicitudes;
+    private List<SolicitudAsignacionDTO> solicitudes = [];
+    private int solicitudesPendientes;
+
+    // Estado de UI
+    private int? enviandoSolicitudParaId;
+    private string? mensajeExito;
+    private string? mensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCompatibilidadAsync();
+    }
+
+    private async Task CargarCompatibilidadAsync()
+    {
+        cargandoCompatibilidad = true;
+        errorCompatibilidad = null;
+        try
+        {
+            compatibilidad = await ApiService.ObtenerCompatibilidadAsync(SesionService.IdUsuario);
+        }
+        catch (Exception ex)
+        {
+            errorCompatibilidad = ex.Message;
+        }
+        finally
+        {
+            cargandoCompatibilidad = false;
+        }
+    }
+
+    private async Task CambiarTabAsync(string tab)
+    {
+        tabActiva = tab;
+        if (tab == "prediccion" && competenciasAsignadas.Count == 0 && !cargandoCompetencias)
+            await CargarCompetenciasAsignadasAsync();
+        else if (tab == "solicitudes" && solicitudes.Count == 0 && !cargandoSolicitudes)
+            await CargarSolicitudesAsync();
+    }
+
+    private async Task CargarCompetenciasAsignadasAsync()
+    {
+        cargandoCompetencias = true;
+        errorCompetencias = null;
+        try
+        {
+            competenciasAsignadas = await ApiService.ObtenerCompetenciasAsignadasAsync(SesionService.IdUsuario);
+        }
+        catch (Exception ex)
+        {
+            errorCompetencias = ex.Message;
+        }
+        finally
+        {
+            cargandoCompetencias = false;
+        }
+    }
+
+    private async Task SeleccionarCompetenciaAsync(CompetenciaAsignadaDTO competencia)
+    {
+        competenciaSeleccionada = competencia;
+        prediccion = null;
+        await CargarPrediccionAsync();
+    }
+
+    private void VolverSelectorCompetencia()
+    {
+        competenciaSeleccionada = null;
+        prediccion = null;
+        errorPrediccion = null;
+    }
+
+    private async Task CargarPrediccionAsync(bool forzarActualizacion = false)
+    {
+        if (competenciaSeleccionada is null) return;
+        cargandoPrediccion = true;
+        errorPrediccion = null;
+        try
+        {
+            prediccion = await ApiService.ObtenerPrediccionAprendizajeAsync(
+                SesionService.IdUsuario,
+                competenciaSeleccionada.IdFichaCompetencia,
+                forzarActualizacion);
+        }
+        catch (Exception ex)
+        {
+            errorPrediccion = ex.Message;
+        }
+        finally
+        {
+            cargandoPrediccion = false;
+        }
+    }
+
+    private async Task RefrescarPrediccionAsync()
+    {
+        prediccion = null;
+        await CargarPrediccionAsync(forzarActualizacion: true);
+    }
+
+    private async Task CargarSolicitudesAsync()
+    {
+        cargandoSolicitudes = true;
+        errorSolicitudes = null;
+        try
+        {
+            solicitudes = await ApiService.ObtenerSolicitudesAsync();
+            solicitudesPendientes = solicitudes.Count(s => s.Estado == "Pendiente");
+        }
+        catch (Exception ex)
+        {
+            errorSolicitudes = ex.Message;
+        }
+        finally
+        {
+            cargandoSolicitudes = false;
+        }
+    }
+
+    private async Task EnviarSolicitudAsync(SugerenciaDTO sugerencia)
+    {
+        enviandoSolicitudParaId = sugerencia.IdFichaCompetencia;
+        mensajeExito = null;
+        mensajeError = null;
+        try
+        {
+            await ApiService.EnviarSolicitudAsync(
+                SesionService.IdInstructor,
+                sugerencia.IdFichaCompetencia,
+                sugerencia.Razonamiento,
+                sugerencia.Compatibilidad);
+            sugerencia.YaTieneSolicitudPendiente = true;
+            mensajeExito = $"Solicitud enviada para \"{sugerencia.NombreCompetencia}\". El administrador la revisará pronto.";
+        }
+        catch (Exception ex)
+        {
+            mensajeError = ex.Message;
+        }
+        finally
+        {
+            enviandoSolicitudParaId = null;
+        }
+    }
+
+    private async Task ResponderSolicitudAsync(int idSolicitud, string estado)
+    {
+        try
+        {
+            await ApiService.ResponderSolicitudAsync(idSolicitud, estado, null);
+            await CargarSolicitudesAsync();
+        }
+        catch (Exception ex)
+        {
+            errorSolicitudes = ex.Message;
+        }
+    }
+
+    private static string CompatColor(int pct) => pct >= 80 ? "alta" : pct >= 50 ? "media" : "baja";
+
+    private static string NombreFase(string? faseFormativa) => faseFormativa switch
+    {
+        "Induccion" => "Inducción",
+        "Analisis" => "Análisis",
+        "Planeacion" => "Planeación",
+        "Ejecucion" => "Ejecución",
+        "Evaluacion" => "Evaluación",
+        _ => "Transversal"
+    };
+
+    private string InicialAvatar()
+    {
+        if (compatibilidad is null) return "??";
+        var partes = compatibilidad.NombreInstructor.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return partes.Length >= 2
+            ? $"{char.ToUpper(partes[0][0])}{char.ToUpper(partes[1][0])}"
+            : compatibilidad.NombreInstructor[..Math.Min(2, compatibilidad.NombreInstructor.Length)].ToUpper();
+    }
+}

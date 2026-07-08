@@ -1,0 +1,850 @@
+@page "/repositorio"
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@using AdsoLabs.Application.DTOs.Repositorio
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@inject RepositorioApiService Api
+@inject SesionService Sesion
+@inject IJSRuntime JS
+
+<PageTitle>Repositorio Documental</PageTitle>
+
+<section class="repositorio">
+
+    <div class="page-header">
+        <div>
+            <h1>Repositorio Documental</h1>
+            <p class="repo-subtitulo">Gestión centralizada de guías, instrumentos y documentos de formación.</p>
+        </div>
+        @if (Sesion.EsAdministrador || Sesion.EsInstructor)
+        {
+            <button class="btn-subir" @onclick="AbrirModalSubir">
+                <i class="bi bi-cloud-upload"></i> Subir documento
+            </button>
+        }
+    </div>
+
+    @* ── Barra de búsqueda ────────────────────────────────────────────────── *@
+    <div class="barra-busqueda">
+        <div class="campo-busqueda">
+            <i class="bi bi-search"></i>
+            <input type="text" placeholder="@PlaceholderFiltro"
+                   @bind="filtroBusqueda" @bind:event="oninput"
+                   @onkeydown="@(e => { if (e.Key == "Enter") _ = CargarTabActiva(); })"
+                   disabled="@(tabActiva == "descargas")" />
+        </div>
+        <button class="btn-buscar" @onclick="CargarTabActiva">Buscar</button>
+        @if (!string.IsNullOrWhiteSpace(filtroBusqueda))
+        {
+            <button class="btn-limpiar" @onclick="LimpiarFiltro">
+                <i class="bi bi-x"></i>
+            </button>
+        }
+    </div>
+
+    @* ── Tabs ──────────────────────────────────────────────────────────────── *@
+    <div class="tabs-repositorio">
+        @foreach (var tab in tabs)
+        {
+            <button class="tab-btn @(tabActiva == tab.Key ? "activa" : "")"
+                    @onclick="() => CambiarTab(tab.Key)">
+                <i class="@tab.Icono"></i>
+                <span>@tab.Etiqueta</span>
+                @if (ContarDocumentos(tab.Key) > 0)
+                {
+                    <span class="tab-badge">@ContarDocumentos(tab.Key)</span>
+                }
+            </button>
+        }
+    </div>
+
+    @* ── Contenido del tab activo ─────────────────────────────────────────── *@
+    <div class="panel-docs">
+        @if (cargando)
+        {
+            <div class="estado-carga">
+                <span class="spinner-border text-primary"></span>
+                <span>Cargando documentos...</span>
+            </div>
+        }
+        else if (tabActiva == "descargas")
+        {
+            @if (!descargas.Any())
+            {
+                <div class="estado-vacio">
+                    <i class="bi bi-download"></i>
+                    <p>Aún no has descargado ningún documento</p>
+                </div>
+            }
+            else
+            {
+                <table class="tabla-docs">
+                    <thead>
+                        <tr>
+                            <th>Documento</th>
+                            <th>Tipo</th>
+                            <th>Fecha de descarga</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in descargas)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="doc-nombre">
+                                        <i class="@GetIconoArchivo(d.ExtensionArchivo)"></i>
+                                        <span class="doc-titulo">@d.NombreOriginal</span>
+                                    </div>
+                                </td>
+                                <td>@(d.ExtensionArchivo?.TrimStart('.').ToUpperInvariant() ?? "—")</td>
+                                <td class="td-fecha">@d.FechaDescarga.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>
+                                    <div class="acciones-doc">
+                                        <button class="btn-accion descarga" title="Descargar de nuevo"
+                                                @onclick="() => DescargarArchivo(d.IdArchivo, d.NombreOriginal)"
+                                                disabled="@(d.IdArchivo == 0)">
+                                            <i class="bi bi-download"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+        else
+        {
+            var docs = ObtenerDocumentosActivos();
+            if (!docs.Any())
+            {
+                <div class="estado-vacio">
+                    <i class="bi bi-folder2-open"></i>
+                    <p>No hay documentos en esta categoría</p>
+                    @if (Sesion.EsAdministrador || Sesion.EsInstructor)
+                    {
+                        <button class="btn-subir-vacio" @onclick="AbrirModalSubir">
+                            <i class="bi bi-plus-circle"></i> Subir el primero
+                        </button>
+                    }
+                </div>
+            }
+            else
+            {
+                <table class="tabla-docs">
+                    <thead>
+                        <tr>
+                            <th>Documento</th>
+                            <th>Estado</th>
+                            <th>Instructor</th>
+                            <th>Asociado a</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var doc in docs)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="doc-nombre">
+                                        <i class="@GetIconoArchivo(doc.ExtensionArchivo)"></i>
+                                        <div>
+                                            <span class="doc-titulo">@doc.Nombre</span>
+                                            @if (!string.IsNullOrWhiteSpace(doc.Descripcion))
+                                            {
+                                                <span class="doc-desc">@doc.Descripcion</span>
+                                            }
+                                            <span class="doc-meta">v@(doc.Version) · @FormatBytes(doc.TamanioBytes)</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge-estado @GetClaseEstado(doc.Estado)">@doc.Estado</span>
+                                </td>
+                                <td class="td-instructor">@doc.InstructorNombre</td>
+                                <td class="td-entidad">@doc.EntidadRelacionada</td>
+                                <td class="td-fecha">@doc.FechaCreacion.ToString("dd/MM/yyyy")</td>
+                                <td>
+                                    <div class="acciones-doc">
+                                        <button class="btn-accion descarga" title="Descargar"
+                                                @onclick="() => DescargarArchivo(doc.IdArchivo, doc.NombreOriginal)">
+                                            <i class="bi bi-download"></i>
+                                        </button>
+                                        @if (Sesion.EsAdministrador || doc.IdInstructor == idInstructorActual)
+                                        {
+                                            <button class="btn-accion estado" title="Cambiar estado"
+                                                    @onclick="() => AbrirCambioEstado(doc)">
+                                                <i class="bi bi-arrow-repeat"></i>
+                                            </button>
+                                            <button class="btn-accion eliminar" title="Eliminar"
+                                                    @onclick="() => ConfirmarEliminar(doc)">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        }
+    </div>
+
+</section>
+
+@* ══════════════════════════════════════════════════════════════════════════════
+   MODAL — SUBIR DOCUMENTO
+   ══════════════════════════════════════════════════════════════════════════════ *@
+@if (modalSubirAbierto)
+{
+    <div class="modal-overlay" @onclick="CerrarModales">
+        <div class="modal-card" @onclick:stopPropagation>
+
+            <div class="modal-header">
+                <h2><i class="bi bi-cloud-upload"></i> Subir documento</h2>
+                <button class="btn-cerrar-modal" @onclick="CerrarModales"><i class="bi bi-x-lg"></i></button>
+            </div>
+
+            <div class="modal-body">
+
+                @* Selector de tipo *@
+                <div class="campo-form">
+                    <label>Tipo de documento</label>
+                    <select value="@subidaTipo" @onchange="OnSubidaTipoChanged">
+                        <option value="">-- Seleccione --</option>
+                        <option value="Guia">Guía de Aprendizaje</option>
+                        <option value="Instrumento">Instrumento de Evaluación</option>
+                        <option value="Planeacion">Planeación Pedagógica</option>
+                        <option value="Proyecto">Proyecto Formativo</option>
+                        <option value="Desarrollo">Desarrollo Curricular</option>
+                        <option value="Plan">Plan Concertado</option>
+                    </select>
+                </div>
+
+                @if (!string.IsNullOrEmpty(subidaTipo))
+                {
+                    @* Título / Nombre (no aplica a Planeacion ni Desarrollo ni Plan) *@
+                    @if (subidaTipo is "Guia" or "Instrumento" or "Proyecto")
+                    {
+                        <div class="campo-form">
+                            <label>@(subidaTipo == "Instrumento" ? "Nombre" : "Título")</label>
+                            <input type="text" @bind="subidaTitulo" placeholder="Ingresa el título..." />
+                        </div>
+                    }
+
+                    @* Descripción (todos excepto Plan) *@
+                    @if (subidaTipo != "Plan")
+                    {
+                        <div class="campo-form">
+                            <label>Descripción <span class="opcional">(opcional)</span></label>
+                            <textarea @bind="subidaDescripcion" rows="2" placeholder="Descripción breve..."></textarea>
+                        </div>
+                    }
+
+                    @* Selector de entidad relacionada *@
+                    @if (subidaTipo is "Guia" or "Planeacion")
+                    {
+                        @if (cargandoSelectores)
+                        {
+                            <div class="campo-form">
+                                <span class="text-muted small">Cargando fichas...</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="campo-form">
+                                <label>Ficha</label>
+                                <select value="@subidaFichaNumero" @onchange="OnFichaFCChanged">
+                                    <option value="">-- Seleccione ficha --</option>
+                                    @foreach (var num in fichasCompetencias.Select(fc => fc.NumeroFicha).Distinct().OrderBy(x => x))
+                                    {
+                                        <option value="@num">Ficha @num</option>
+                                    }
+                                </select>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(subidaFichaNumero))
+                            {
+                                <div class="campo-form">
+                                    <label>Competencia</label>
+                                    <select @bind="subidaIdFichaCompetencia">
+                                        <option value="0">-- Seleccione competencia --</option>
+                                        @foreach (var fc in fichasCompetencias.Where(fc => fc.NumeroFicha == subidaFichaNumero))
+                                        {
+                                            <option value="@fc.IdFichaCompetencia">@fc.CompetenciaNombre</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                        }
+                    }
+                    else if (subidaTipo is "Instrumento" or "Desarrollo")
+                    {
+                        <div class="campo-form">
+                            <label>Competencia</label>
+                            @if (cargandoSelectores)
+                            {
+                                <span class="text-muted small">Cargando...</span>
+                            }
+                            else
+                            {
+                                <select @bind="subidaIdCompetencia">
+                                    <option value="0">-- Seleccione --</option>
+                                    @foreach (var c in competencias)
+                                    {
+                                        <option value="@c.IdCompetencia">@c.Nombre</option>
+                                    }
+                                </select>
+                            }
+                        </div>
+                    }
+                    else if (subidaTipo == "Proyecto")
+                    {
+                        <div class="campo-form">
+                            <label>Ficha</label>
+                            @if (cargandoSelectores)
+                            {
+                                <span class="text-muted small">Cargando...</span>
+                            }
+                            else
+                            {
+                                <select @bind="subidaIdFicha">
+                                    <option value="0">-- Seleccione --</option>
+                                    @foreach (var f in fichas)
+                                    {
+                                        <option value="@f.IdFicha">Ficha @f.NumeroFicha</option>
+                                    }
+                                </select>
+                            }
+                        </div>
+                    }
+                    else if (subidaTipo == "Plan")
+                    {
+                        <div class="campo-form">
+                            <label>Plan Concertado a vincular</label>
+                            @if (cargandoSelectores)
+                            {
+                                <span class="text-muted small">Cargando...</span>
+                            }
+                            else if (!planesSinDoc.Any())
+                            {
+                                <p class="text-muted small">Todos los planes ya tienen documento vinculado.</p>
+                            }
+                            else
+                            {
+                                <select @bind="subidaIdPlan">
+                                    <option value="0">-- Seleccione --</option>
+                                    @foreach (var p in planesSinDoc)
+                                    {
+                                        <option value="@p.IdPlan">@p.CompetenciaNombre</option>
+                                    }
+                                </select>
+                            }
+                        </div>
+                    }
+
+                    @* Selector de archivo *@
+                    <div class="campo-form">
+                        <label>Archivo <span class="formatos">(PDF, DOCX)</span></label>
+                        <div class="zona-archivo @(archivoSubida is not null ? "con-archivo" : "")">
+                            <InputFile OnChange="OnArchivoSeleccionado" accept=".pdf,.docx,.doc"
+                                       style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;z-index:2" />
+                            @if (archivoSubida is not null)
+                            {
+                                <span class="nombre-archivo">
+                                    <i class="bi bi-file-earmark-check"></i> @archivoSubida.Name
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="placeholder-archivo">
+                                    <i class="bi bi-cloud-arrow-up"></i> Seleccionar archivo
+                                </span>
+                            }
+                        </div>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(errorSubida))
+                    {
+                        <div class="alerta-error">
+                            <i class="bi bi-exclamation-triangle-fill"></i> @errorSubida
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-cancelar" @onclick="CerrarModales">Cancelar</button>
+                <button class="btn-confirmar" @onclick="EjecutarSubida"
+                        disabled="@(subiendoArchivo || string.IsNullOrEmpty(subidaTipo) || archivoSubida is null)">
+                    @if (subiendoArchivo)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                        <span>Subiendo...</span>
+                    }
+                    else
+                    {
+                        <i class="bi bi-cloud-upload me-1"></i>
+                        <span>Subir</span>
+                    }
+                </button>
+            </div>
+
+        </div>
+    </div>
+}
+
+@* ══════════════════════════════════════════════════════════════════════════════
+   MODAL — CAMBIO DE ESTADO
+   ══════════════════════════════════════════════════════════════════════════════ *@
+@if (modalEstadoAbierto && docSeleccionado is not null)
+{
+    <div class="modal-overlay" @onclick="CerrarModales">
+        <div class="modal-card modal-sm" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h2><i class="bi bi-arrow-repeat"></i> Cambiar estado</h2>
+                <button class="btn-cerrar-modal" @onclick="CerrarModales"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">@docSeleccionado.Nombre</p>
+                <div class="campo-form">
+                    <label>Nuevo estado</label>
+                    <select @bind="nuevoEstado">
+                        <option value="Borrador">Borrador</option>
+                        <option value="Publicado">Publicado</option>
+                        <option value="Cerrado">Cerrado</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" @onclick="CerrarModales">Cancelar</button>
+                <button class="btn-confirmar" @onclick="EjecutarCambioEstado">Guardar</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ══════════════════════════════════════════════════════════════════════════════
+   MODAL — CONFIRMACIÓN ELIMINAR
+   ══════════════════════════════════════════════════════════════════════════════ *@
+@if (modalEliminarAbierto && docSeleccionado is not null)
+{
+    <div class="modal-overlay" @onclick="CerrarModales">
+        <div class="modal-card modal-sm" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h2><i class="bi bi-trash3"></i> Eliminar documento</h2>
+                <button class="btn-cerrar-modal" @onclick="CerrarModales"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Eliminar permanentemente <strong>@docSeleccionado.Nombre</strong>?</p>
+                <p class="text-muted small">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancelar" @onclick="CerrarModales">Cancelar</button>
+                <button class="btn-eliminar-conf" @onclick="EjecutarEliminar">
+                    <i class="bi bi-trash3 me-1"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Componente inline para tab Descargas ─────────────────────────────────── *@
+@code {
+    // ─── Sub-componente Descargas (inline para simplicidad) ──────────────────
+}
+
+@code {
+
+    // ── Definición de tabs ──────────────────────────────────────────────────
+
+    record TabInfo(string Key, string Etiqueta, string Icono);
+
+    readonly List<TabInfo> tabs =
+    [
+        new("guias",        "Guías de Aprendizaje",   "bi bi-journal-text"),
+        new("instrumentos", "Instrumentos",            "bi bi-clipboard-check"),
+        new("planeaciones", "Planeaciones",            "bi bi-calendar3"),
+        new("proyectos",    "Proyectos Formativos",    "bi bi-kanban"),
+        new("desarrollo",   "Desarrollo Curricular",   "bi bi-book"),
+        new("planes",       "Planes Concertados",      "bi bi-file-earmark-text"),
+        new("descargas",    "Mis Descargas",           "bi bi-download"),
+    ];
+
+    // ── Estado de la página ──────────────────────────────────────────────────
+
+    string tabActiva        = "guias";
+    string filtroBusqueda   = "";
+    bool   cargando         = false;
+    int    idInstructorActual = 0;
+
+    // ── Datos por tab ────────────────────────────────────────────────────────
+
+    List<DocumentoListadoDTO> guias        = [];
+    List<DocumentoListadoDTO> instrumentos = [];
+    List<DocumentoListadoDTO> planeaciones = [];
+    List<DocumentoListadoDTO> proyectos    = [];
+    List<DocumentoListadoDTO> desarrollos  = [];
+    List<DocumentoListadoDTO> planes       = [];
+    List<DescargaDTO>         descargas    = [];
+
+    // ── Estado de modales ────────────────────────────────────────────────────
+
+    bool modalSubirAbierto   = false;
+    bool modalEstadoAbierto  = false;
+    bool modalEliminarAbierto = false;
+    DocumentoListadoDTO? docSeleccionado = null;
+
+    // ── Subida ───────────────────────────────────────────────────────────────
+
+    string  subidaTipo               = "";
+    string  subidaTitulo             = "";
+    string? subidaDescripcion        = null;
+    int     subidaIdFichaCompetencia = 0;
+    string  subidaFichaNumero        = "";   // ficha seleccionada para el picker FC
+    int     subidaIdCompetencia      = 0;
+    int     subidaIdFicha            = 0;
+    int     subidaIdPlan             = 0;
+    Microsoft.AspNetCore.Components.Forms.IBrowserFile? archivoSubida = null;
+    bool    subiendoArchivo        = false;
+    string  errorSubida            = "";
+
+    // ── Estado de doc seleccionado ───────────────────────────────────────────
+
+    string nuevoEstado = "Borrador";
+
+    // ── Selectores del modal ─────────────────────────────────────────────────
+
+    bool cargandoSelectores = false;
+    List<FichaCompetenciaSelectDTO> fichasCompetencias = [];
+    List<CompetenciaSelectDTO>      competencias       = [];
+    List<FichaSelectDTO>            fichas             = [];
+    List<PlanParaSubirDTO>          planesSinDoc       = [];
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarInstructorActual();
+        await CargarTabActiva();
+    }
+
+    async Task CargarInstructorActual()
+    {
+        // El idInstructor no está en el claim, se usa para comparar permisos de UI
+        // El backend valida de forma definitiva.
+        // Por ahora lo cargamos desde selectores para comparar en la tabla.
+        if (Sesion.EsInstructor)
+        {
+            var fcs = await Api.ObtenerFichasCompetenciasAsync();
+            // Solo cargamos los selectores; el idInstructor se compara con el claim IdUsuario
+            // como proxy (los campos IdInstructor en DTOs son IdInstructor del perfil).
+        }
+    }
+
+    async Task CambiarTab(string key)
+    {
+        tabActiva       = key;
+        filtroBusqueda  = "";
+        await CargarTabActiva();
+    }
+
+    async Task CargarTabActiva()
+    {
+        cargando = true;
+        StateHasChanged();
+        try
+        {
+            switch (tabActiva)
+            {
+                case "guias":        guias        = await Api.ObtenerGuiasAsync(filtroBusqueda);        break;
+                case "instrumentos": instrumentos = await Api.ObtenerInstrumentosAsync(filtroBusqueda); break;
+                case "planeaciones": planeaciones = await Api.ObtenerPlaneacionesAsync(filtroBusqueda); break;
+                case "proyectos":    proyectos    = await Api.ObtenerProyectosAsync(filtroBusqueda);    break;
+                case "desarrollo":   desarrollos  = await Api.ObtenerDesarrollosAsync(filtroBusqueda);  break;
+                case "planes":       planes       = await Api.ObtenerPlanesConcertadosAsync(filtroBusqueda); break;
+                case "descargas":    descargas    = await Api.ObtenerMisDescargasAsync(Sesion.IdUsuario); break;
+            }
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    async Task LimpiarFiltro()
+    {
+        filtroBusqueda = "";
+        await CargarTabActiva();
+    }
+
+    List<DocumentoListadoDTO> ObtenerDocumentosActivos() => tabActiva switch
+    {
+        "guias"        => guias,
+        "instrumentos" => instrumentos,
+        "planeaciones" => planeaciones,
+        "proyectos"    => proyectos,
+        "desarrollo"   => desarrollos,
+        "planes"       => planes,
+        _              => []
+    };
+
+    int ContarDocumentos(string key) => key switch
+    {
+        "guias"        => guias.Count,
+        "instrumentos" => instrumentos.Count,
+        "planeaciones" => planeaciones.Count,
+        "proyectos"    => proyectos.Count,
+        "desarrollo"   => desarrollos.Count,
+        "planes"       => planes.Count,
+        "descargas"    => descargas.Count,
+        _              => 0
+    };
+
+    // ─── SUBIDA ──────────────────────────────────────────────────────────────
+
+    async Task AbrirModalSubir()
+    {
+        ResetSubida();
+        modalSubirAbierto = true;
+        // Preseleccionar tab activo
+        subidaTipo = tabActiva switch
+        {
+            "guias"        => "Guia",
+            "instrumentos" => "Instrumento",
+            "planeaciones" => "Planeacion",
+            "proyectos"    => "Proyecto",
+            "desarrollo"   => "Desarrollo",
+            "planes"       => "Plan",
+            _              => ""
+        };
+        if (!string.IsNullOrEmpty(subidaTipo))
+            await CargarSelectores();
+    }
+
+    async Task OnSubidaTipoChanged(ChangeEventArgs e)
+    {
+        subidaTipo = e.Value?.ToString() ?? "";
+        ResetCamposSubida();
+        if (!string.IsNullOrEmpty(subidaTipo))
+            await CargarSelectores();
+    }
+
+    void OnFichaFCChanged(ChangeEventArgs e)
+    {
+        subidaFichaNumero        = e.Value?.ToString() ?? "";
+        subidaIdFichaCompetencia = 0;   // resetear competencia al cambiar ficha
+    }
+
+    async Task CargarSelectores()
+    {
+        cargandoSelectores = true;
+        StateHasChanged();
+        try
+        {
+            switch (subidaTipo)
+            {
+                case "Guia" or "Planeacion":
+                    fichasCompetencias = await Api.ObtenerFichasCompetenciasAsync(); break;
+                case "Instrumento" or "Desarrollo":
+                    competencias = await Api.ObtenerCompetenciasAsync(); break;
+                case "Proyecto":
+                    fichas = await Api.ObtenerFichasAsync(); break;
+                case "Plan":
+                    planesSinDoc = await Api.ObtenerPlanesSinDocumentoAsync(); break;
+            }
+        }
+        finally
+        {
+            cargandoSelectores = false;
+            StateHasChanged();
+        }
+    }
+
+    void OnArchivoSeleccionado(Microsoft.AspNetCore.Components.Forms.InputFileChangeEventArgs e)
+        => archivoSubida = e.File;
+
+    async Task EjecutarSubida()
+    {
+        errorSubida = "";
+        if (archivoSubida is null) { errorSubida = "Selecciona un archivo."; return; }
+
+        var validarId = subidaTipo switch
+        {
+            "Guia" or "Planeacion" => subidaIdFichaCompetencia == 0,
+            "Instrumento" or "Desarrollo" => subidaIdCompetencia == 0,
+            "Proyecto" => subidaIdFicha == 0,
+            "Plan" => subidaIdPlan == 0,
+            _ => false
+        };
+        if (validarId) { errorSubida = "Selecciona la entidad relacionada."; return; }
+
+        if (subidaTipo is "Guia" or "Instrumento" or "Proyecto" && string.IsNullOrWhiteSpace(subidaTitulo))
+        { errorSubida = "Ingresa un título."; return; }
+
+        subiendoArchivo = true;
+        StateHasChanged();
+        bool exito = false;
+        try
+        {
+            const long maxBytes = 20 * 1024 * 1024; // 20 MB
+            await using var stream = archivoSubida.OpenReadStream(maxBytes);
+
+            var uid = Sesion.IdUsuario;
+            exito = subidaTipo switch
+            {
+                "Guia"        => await Api.SubirGuiaAsync(stream, archivoSubida.Name, subidaTitulo, subidaDescripcion, subidaIdFichaCompetencia, uid),
+                "Instrumento" => await Api.SubirInstrumentoAsync(stream, archivoSubida.Name, subidaTitulo, subidaDescripcion, subidaIdCompetencia, uid),
+                "Planeacion"  => await Api.SubirPlaneacionAsync(stream, archivoSubida.Name, subidaDescripcion, subidaIdFichaCompetencia, uid),
+                "Proyecto"    => await Api.SubirProyectoAsync(stream, archivoSubida.Name, subidaTitulo, subidaDescripcion, subidaIdFicha, uid),
+                "Desarrollo"  => await Api.SubirDesarrolloAsync(stream, archivoSubida.Name, subidaDescripcion, subidaIdCompetencia, uid),
+                "Plan"        => await Api.SubirPlanConcertadoAsync(stream, archivoSubida.Name, subidaIdPlan, uid),
+                _             => false
+            };
+        }
+        catch (Exception ex) { errorSubida = $"Error: {ex.Message}"; }
+        finally { subiendoArchivo = false; }
+
+        if (exito)
+        {
+            CerrarModales();
+            // Cambiar al tab correspondiente y recargar
+            tabActiva = subidaTipo switch
+            {
+                "Guia"        => "guias",
+                "Instrumento" => "instrumentos",
+                "Planeacion"  => "planeaciones",
+                "Proyecto"    => "proyectos",
+                "Desarrollo"  => "desarrollo",
+                "Plan"        => "planes",
+                _             => tabActiva
+            };
+            await CargarTabActiva();
+        }
+        else if (string.IsNullOrEmpty(errorSubida))
+        {
+            errorSubida = "No se pudo subir el documento. Verifica los datos.";
+        }
+    }
+
+    // ─── DESCARGA ────────────────────────────────────────────────────────────
+
+    async Task DescargarArchivo(int idArchivo, string nombreOriginal)
+    {
+        var (bytes, contentType, nombre) = await Api.DescargarAsync(idArchivo, Sesion.IdUsuario);
+        if (bytes is null) return;
+        var nombreFinal = string.IsNullOrWhiteSpace(nombre) ? nombreOriginal : nombre;
+        await JS.InvokeVoidAsync("downloadBytesAsFile", nombreFinal, bytes, contentType ?? "application/octet-stream");
+    }
+
+    // ─── CAMBIO DE ESTADO ────────────────────────────────────────────────────
+
+    void AbrirCambioEstado(DocumentoListadoDTO doc)
+    {
+        docSeleccionado     = doc;
+        nuevoEstado         = doc.Estado;
+        modalEstadoAbierto  = true;
+    }
+
+    async Task EjecutarCambioEstado()
+    {
+        if (docSeleccionado is null) return;
+        await Api.CambiarEstadoAsync(docSeleccionado.TipoDocumento, docSeleccionado.IdDocumento, nuevoEstado, Sesion.IdUsuario);
+        CerrarModales();
+        await CargarTabActiva();
+    }
+
+    // ─── ELIMINACIÓN ─────────────────────────────────────────────────────────
+
+    void ConfirmarEliminar(DocumentoListadoDTO doc)
+    {
+        docSeleccionado      = doc;
+        modalEliminarAbierto = true;
+    }
+
+    async Task EjecutarEliminar()
+    {
+        if (docSeleccionado is null) return;
+        await Api.EliminarAsync(docSeleccionado.TipoDocumento, docSeleccionado.IdDocumento, Sesion.IdUsuario);
+        CerrarModales();
+        await CargarTabActiva();
+    }
+
+    // ─── HELPERS ─────────────────────────────────────────────────────────────
+
+    void CerrarModales()
+    {
+        modalSubirAbierto    = false;
+        modalEstadoAbierto   = false;
+        modalEliminarAbierto = false;
+        docSeleccionado      = null;
+    }
+
+    void ResetSubida()
+    {
+        subidaTipo             = "";
+        archivoSubida          = null;
+        errorSubida            = "";
+        subiendoArchivo        = false;
+        ResetCamposSubida();
+    }
+
+    void ResetCamposSubida()
+    {
+        subidaTitulo             = "";
+        subidaDescripcion        = null;
+        subidaIdFichaCompetencia = 0;
+        subidaFichaNumero        = "";
+        subidaIdCompetencia      = 0;
+        subidaIdFicha            = 0;
+        subidaIdPlan             = 0;
+        fichasCompetencias       = [];
+        competencias             = [];
+        fichas                   = [];
+        planesSinDoc             = [];
+    }
+
+    string PlaceholderFiltro => tabActiva switch
+    {
+        "guias"        => "Buscar por título, ficha, competencia o instructor...",
+        "instrumentos" => "Buscar por nombre o instructor...",
+        "planeaciones" => "Buscar por ficha, competencia o instructor...",
+        "proyectos"    => "Buscar por título o instructor...",
+        "desarrollo"   => "Buscar por competencia o instructor...",
+        "planes"       => "Buscar por competencia o instructor...",
+        "descargas"    => "Búsqueda no disponible en esta sección",
+        _              => "Buscar..."
+    };
+
+    static string GetClaseEstado(string estado) => estado switch
+    {
+        "Publicado" => "estado-publicado",
+        "Cerrado"   => "estado-cerrado",
+        _           => "estado-borrador"
+    };
+
+    static string GetIconoArchivo(string? ext) => ext?.ToLowerInvariant() switch
+    {
+        ".pdf"  => "bi bi-file-earmark-pdf text-danger",
+        ".docx" => "bi bi-file-earmark-word text-primary",
+        ".doc"  => "bi bi-file-earmark-word text-primary",
+        ".xlsx" => "bi bi-file-earmark-excel text-success",
+        _       => "bi bi-file-earmark text-secondary"
+    };
+
+    static string FormatBytes(long? bytes)
+    {
+        if (bytes is null) return "";
+        return bytes switch
+        {
+            < 1024               => $"{bytes} B",
+            < 1024 * 1024        => $"{bytes / 1024.0:0.#} KB",
+            _                    => $"{bytes / (1024.0 * 1024):0.#} MB"
+        };
+    }
+}
+

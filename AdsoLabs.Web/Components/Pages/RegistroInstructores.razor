@@ -1,0 +1,247 @@
+@page "/registro-instructor"
+@attribute [Authorize(Roles = "Administrador")]
+@using AdsoLabs.Application.DTOs.Instructor
+@using AdsoLabs.Web.Services.Api
+@rendermode InteractiveServer
+@inject NavigationManager nav
+@inject InstructorApiService InstructorApiService
+
+@* ── Modal de feedback ── *@
+@if (mostrarModal)
+{
+	<div class="modal-overlay" @onclick="CerrarModal">
+		<div class="modal-feedback @(exitoso ? "modal-ok" : "modal-error")" @onclick:stopPropagation="true">
+			<i class="bi @(exitoso ? "bi-check-circle-fill" : "bi-exclamation-circle-fill") modal-icono"></i>
+			<h3>@(exitoso ? "¡Instructor registrado!" : "No se pudo registrar")</h3>
+			<p class="modal-mensaje">@mensajeResultado</p>
+			@if (erroresModal.Any())
+			{
+				<ul class="modal-errores">
+					@foreach (var e in erroresModal)
+					{
+						<li>@e</li>
+					}
+				</ul>
+			}
+			<button class="modal-btn" @onclick="CerrarModal">
+				@(exitoso ? "Aceptar" : "Cerrar")
+			</button>
+		</div>
+	</div>
+}
+
+<section class="reg-page">
+
+	<div class="reg-header">
+		<h1>Registro de Instructor</h1>
+		<p class="reg-subtitle">Complete los datos para agregar un nuevo instructor al sistema</p>
+	</div>
+
+	<div class="reg-card">
+
+		<!-- Datos personales -->
+		<div class="reg-section">
+			<h2 class="reg-section-title">
+				<i class="bi bi-person-vcard"></i> Datos personales
+			</h2>
+			<div class="reg-grid">
+
+				<div class="reg-field">
+					<label class="reg-label">Tipo de documento</label>
+					<select class="reg-input" @bind="form.TipoDocumento">
+						<option value="">Seleccione un tipo de documento</option>
+						@foreach (var doc in tiposDocumento)
+						{
+							<option value="@doc">@doc</option>
+						}
+					</select>
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Número de documento</label>
+					<input class="reg-input" type="text" placeholder="Ej. 1234567890" @bind="form.NumeroDocumento" />
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Nombre</label>
+					<input class="reg-input" type="text" placeholder="Nombres del instructor" @bind="form.Nombre" />
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Apellido</label>
+					<input class="reg-input" type="text" placeholder="Apellidos del instructor" @bind="form.Apellido" />
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Correo electrónico</label>
+					<input class="reg-input" type="email" placeholder="correo@sena.edu.co" @bind="form.Correo" />
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Teléfono</label>
+					<input class="reg-input" type="tel" placeholder="300 000 0000" @bind="form.Telefono" />
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Fecha de nacimiento</label>
+					<input class="reg-input" type="date" @bind="form.FechaNacimiento" />
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Dirección</label>
+					<input class="reg-input" type="text" placeholder="Calle / Carrera / Av." @bind="form.Direccion" />
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Municipio</label>
+					<input class="reg-input" type="text" placeholder="Municipio de residencia" @bind="form.Municipio" />
+				</div>
+
+			</div>
+		</div>
+
+		<div class="reg-divider"></div>
+
+		<!-- Datos adicionales -->
+		<div class="reg-section">
+			<h2 class="reg-section-title">
+				<i class="bi bi-briefcase"></i> Datos adicionales
+			</h2>
+			<div class="reg-grid">
+
+				<div class="reg-field">
+					<label class="reg-label">Número de contrato</label>
+					<input class="reg-input" type="text" placeholder="Ej. 2024-001" @bind="form.NumeroContrato" />
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Especialidad</label>
+					<input class="reg-input" type="text" placeholder="Especialidad técnica" @bind="form.Especialidad" />
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Tipo de vinculación</label>
+					<select class="reg-input" @bind="form.TipoVinculacion">
+						<option value="">Seleccione un tipo de vinculación</option>
+						@foreach (var tv in tiposVinculacion)
+						{
+							<option value="@tv">@tv</option>
+						}
+					</select>
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Fecha de vinculación</label>
+					<input class="reg-input" type="date" @bind="fechaVinculacionInput" />
+				</div>
+
+				<div class="reg-field">
+					<label class="reg-label">Estado</label>
+					<select class="reg-input" @bind="activoStr">
+						<option value="true">Activo</option>
+						<option value="false">Inactivo</option>
+					</select>
+				</div>
+
+			</div>
+		</div>
+
+		<div class="reg-footer">
+			<button class="reg-btn-guardar" @onclick="Guardar" disabled="@guardando">
+				@if (guardando)
+				{
+					<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+					<span>Guardando...</span>
+				}
+				else
+				{
+					<i class="bi bi-check-lg"></i>
+					<span>Guardar instructor</span>
+				}
+			</button>
+		</div>
+
+	</div>
+
+</section>
+
+@code {
+
+	InstructorAgregarDTO form = new() { Activo = true };
+	string activoStr = "true";
+	DateTime? fechaVinculacionInput;
+
+	bool guardando;
+	bool exitoso;
+	bool mostrarModal;
+	string mensajeResultado = "";
+	List<string> erroresModal = [];
+
+	readonly List<string> tiposDocumento  = ["CC", "TI", "CE", "PPT"];
+	readonly List<string> tiposVinculacion = ["Planta", "Contratista", "Hora Cátedra"];
+
+	void CerrarModal()
+	{
+		mostrarModal = false;
+		if (exitoso) nav.NavigateTo("/instructor");
+	}
+
+	private List<string> Validar()
+	{
+		var lista = new List<string>();
+		if (string.IsNullOrWhiteSpace(form.TipoDocumento))   lista.Add("El tipo de documento es obligatorio.");
+		if (string.IsNullOrWhiteSpace(form.NumeroDocumento)) lista.Add("El número de documento es obligatorio.");
+		if (string.IsNullOrWhiteSpace(form.Nombre))          lista.Add("El nombre es obligatorio.");
+		if (string.IsNullOrWhiteSpace(form.Apellido))        lista.Add("El apellido es obligatorio.");
+		if (string.IsNullOrWhiteSpace(form.Correo))          lista.Add("El correo electrónico es obligatorio.");
+		else if (!form.Correo.Contains('@'))                  lista.Add("El correo electrónico no es válido.");
+		return lista;
+	}
+
+	private async Task Guardar()
+	{
+		var validacion = Validar();
+		if (validacion.Any())
+		{
+			exitoso          = false;
+			mensajeResultado = "Corrige los siguientes campos antes de continuar:";
+			erroresModal     = validacion;
+			mostrarModal     = true;
+			return;
+		}
+
+		guardando = true;
+		form.Activo = activoStr == "true";
+		form.FechaVinculacion = fechaVinculacionInput.HasValue
+			? DateOnly.FromDateTime(fechaVinculacionInput.Value)
+			: null;
+
+		try
+		{
+			var resultado = await InstructorApiService.AgregarInstructorAsync(form);
+			exitoso          = resultado.esExitoso;
+			mensajeResultado = exitoso ? "El instructor fue agregado correctamente al sistema." : resultado.Mensaje;
+			erroresModal     = [];
+			mostrarModal     = true;
+
+			if (exitoso)
+			{
+				form                  = new() { Activo = true };
+				activoStr             = "true";
+				fechaVinculacionInput = null;
+			}
+		}
+		catch
+		{
+			exitoso          = false;
+			mensajeResultado = "Error inesperado al conectar con el servidor.";
+			erroresModal     = [];
+			mostrarModal     = true;
+		}
+		finally
+		{
+			guardando = false;
+		}
+	}
+
+}

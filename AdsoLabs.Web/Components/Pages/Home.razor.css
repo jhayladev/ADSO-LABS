@@ -1,0 +1,594 @@
+/* ═══════════════════════════════════════════════════════════════
+   Home.razor.css — Dashboard ADSO Labs · v2
+   Paleta principal: #3B82F6 (azul) · #4F46E5 (indigo) · #6D28D9 (violeta)
+   Fondo: #F4F6FB · Tarjetas: #FFFFFF
+   NOTA: NO usar var() — el scope de Blazor rompe :root variables.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Base ──────────────────────────────────────────────────── */
+.db-root {
+    background: transparent;
+    min-height: 100vh;
+    padding: 2rem 2.5rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.db-titulo {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin-bottom: .2rem;
+}
+
+.db-subtitulo {
+    font-size: .9rem;
+    color: #94A3B8;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+/* ── Cargando ─────────────────────────────────────────────── */
+.db-cargando {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    font-family: 'Poppins', sans-serif;
+}
+.db-spinner        { color: #3B82F6 !important; width: 3rem; height: 3rem; }
+.db-cargando-texto { color: #64748B; margin-top: 1rem; font-size: .9rem; }
+.db-alert          { border-radius: 14px; font-family: 'Poppins', sans-serif; }
+
+/* ── Tarjeta base ─────────────────────────────────────────── */
+.db-card {
+    background: #FFFFFF;
+    border-radius: 20px;
+    box-shadow: 0 2px 18px rgba(59, 130, 246, .07), 0 1px 4px rgba(0,0,0,.04);
+    padding: 1.5rem;
+    border: 1px solid rgba(226, 232, 240, .7);
+}
+
+
+.db-vacio { color: #94A3B8; font-size: .85rem; text-align: center; padding: 2rem 0; }
+
+/* Cabecera de tarjeta */
+.db-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.25rem;
+}
+.db-card-titulo {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1E293B;
+    margin: 0;
+}
+.db-card-subtitulo { font-size: .74rem; color: #94A3B8; margin: .15rem 0 0; }
+.db-card-icon {
+    font-size: 1.2rem;
+    color: #898F96;
+    opacity: .8;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FILA KPI
+   ═══════════════════════════════════════════════════════════ */
+.db-kpi-grid {
+    display: grid;
+    grid-template-columns: 1.7fr .9fr .9fr 0.6fr;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    align-items: stretch;
+}
+
+.db-kpi-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ── Perfil ────────────────────────────────────────────────── */
+.db-perfil-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: .7rem;
+    padding-top: 2.5rem;
+}
+
+.db-avatar {
+    width: 76px;
+    height: 76px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3B82F6, #6D28D9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(59,130,246,.35);
+}
+.db-avatar .bi { font-size: 2.2rem; color: #FFFFFF; }
+
+.db-perfil-nombre { font-size: 1rem; font-weight: 600; color: #1E293B; margin: 0; }
+.db-perfil-cargo  { font-size: .78rem; color: #64748B; margin: 0; }
+
+.db-perfil-actividad {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    font-size: .72rem;
+    color: #64748B;
+    margin: .1rem 0 0;
+}
+
+.db-dot-azul {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #3B82F6;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+/* ── KPI genérico ─────────────────────────────────────────── */
+.db-kpi-center, .db-kpi-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: .4rem;
+}
+.db-kpi-right { align-items: flex-start; }
+
+/* Título arriba-izquierda · Valor abajo-derecha */
+.db-kpi-diagonal {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+.db-kpi-diagonal .db-kpi-label,
+.db-kpi-diagonal .db-kpi-label-sm { text-align: left; }
+.db-kpi-diagonal .db-kpi-valor     { align-self: flex-end; }
+
+.db-kpi-label {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #94A3B8;
+    line-height: 1.3;
+}
+.db-kpi-label-sm {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #94A3B8;
+    line-height: 1.3;
+}
+
+.db-kpi-valor  { color: #1E293B; line-height: 1; }
+.db-kpi-grande { font-size: 2.6rem; font-weight: 700; color: #323232; }
+.db-kpi-horas  { font-size: 1.5rem; font-weight: 700; color: #323232; }
+.db-kpi-sep    { font-size: .95rem; font-weight: 400; color: #94A3B8; }
+
+/* ═══════════════════════════════════════════════════════════
+   LAYOUT PRINCIPAL (2 columnas)
+   ═══════════════════════════════════════════════════════════ */
+.db-main-grid {
+    display: grid;
+    grid-template-columns: 1.45fr 1fr;
+    gap: 1.25rem;
+    align-items: stretch;   /* las dos columnas tienen la misma altura */
+    margin-bottom: 1.5rem;
+}
+
+.db-col-izq {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* La columna derecha ahora tiene UNA sola tarjeta que llena toda la altura */
+.db-col-der {
+    display: flex;
+    flex-direction: column;
+}
+
+/* La tarjeta de la columna derecha se convierte en flex column
+   para que la lista de alertas ocupe el espacio sobrante */
+.db-col-der .db-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Estado de Competencias ────────────────────────────────── */
+.db-competencias-body {
+    display: flex;
+    gap: 4rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.db-mini-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .7rem;
+    flex: 0 0 auto;
+}
+
+.db-mini-stat {
+    background: #EEF2FF;
+    border: 1px solid #C7D2FE;
+    border-radius: 14px;
+    padding: .9rem .75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    min-width: 88px;
+}
+.db-mini-val { font-size: 1.5rem; font-weight: 700; color: #4F46E5; line-height: 1; }
+.db-mini-lbl { font-size: .65rem; color: #64748B; margin-top: .25rem; line-height: 1.25; }
+
+.db-donut-area {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.db-donut-canvas { width: 293px; height: 225px; flex-shrink: 0; }
+
+/* Leyenda vertical de cápsulas */
+.db-leyenda-vertical {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    gap: .55rem;
+    align-self: center;
+}
+
+.db-leyenda-capsula {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 90px 90px 90px 0px;
+    padding: .35rem 1.5rem;
+    font-size: .82rem;
+    font-weight: 700;
+    color: #ffffff;
+    min-width: 44px;
+    white-space: nowrap;
+}
+
+/* Cápsula de color claro: texto oscuro para legibilidad */
+.db-leyenda-capsula-clara { color: #475569; }
+
+
+/* ── Gráfico de pilares verticales ───────────────────────── */
+.db-pilares-wrap {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 1.1rem;
+    height: 230px;
+    overflow-x: auto;
+    padding: 0 .25rem;
+}
+
+/* Un grupo = porcentaje + pilar + etiqueta */
+.db-pilar-grupo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .45rem;
+    flex: 1;
+    min-width: 44px;
+    max-width: 80px;
+}
+
+/* Etiqueta del porcentaje encima */
+.db-pilar-pct {
+    font-size: .75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+/* Contenedor gris: representa el 100 % de horas planeadas */
+.db-pilar-track {
+    flex: 1;
+    width: 35%;
+    background: #E8EDF5;
+    border-radius: 99px;     /* extremos completamente redondeados */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end; /* el relleno crece desde abajo */
+}
+
+/* Relleno de color: representa horas ejecutadas */
+.db-pilar-fill {
+    width: 100%;
+    border-radius: 99px;
+    transition: height .6s cubic-bezier(.4, 0, .2, 1);
+    min-height: 4px;
+}
+
+/* Código de ficha debajo */
+.db-pilar-label {
+    font-size: .9rem;
+    color: #94A3B8;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    flex-shrink: 0;
+}
+
+/* Separador gráfico → leyenda */
+.db-pilares-sep {
+    border-top: 1px solid #000000;
+    opacity: 1;
+    margin: .85rem 0 0;
+}
+
+/* Leyenda inferior */
+.db-pilares-leyenda {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    margin-top: .85rem;
+}
+
+/* Par icono + texto — gap pequeño entre ellos */
+.db-ley-par {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+
+.db-ley-sq-pill {
+    display: inline-block;
+    width: 25px;
+    height: 25px;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+
+.db-ley-gris { background: #E8EDF5; border: 1px solid #CBD5E1; }
+.db-ley-grad { background: linear-gradient( to bottom, #DE422A 0%, #792417 100% ); }
+
+.db-ley-txt {
+    font-size: .75rem;
+    color: #64748B;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ALERTAS Y SEGUIMIENTO
+   ═══════════════════════════════════════════════════════════ */
+.db-alerta-lista {
+    display: flex;
+    flex-direction: column;
+}
+
+.db-alerta-item {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    padding: .75rem .25rem;
+    border-bottom: 1px solid #F1F5F9;
+    min-height: 86px;
+}
+.db-alerta-item:last-child { border-bottom: none; }
+
+/* Dot indicador de estado */
+.db-alerta-dot {
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    background: #EF4444;
+    box-shadow: 0 0 0 3px rgba(239,68,68,.18);
+    flex-shrink: 0;
+}
+.db-alerta-dot-ok   {
+    background: #10B981;
+    box-shadow: 0 0 0 3px rgba(16,185,129,.18);
+}
+.db-alerta-dot-warn {
+    background: #F59E0B;
+    box-shadow: 0 0 0 3px rgba(245,158,11,.18);
+}
+
+.db-alerta-texto   { flex: 1; display: flex; flex-direction: column; gap: .1rem; }
+.db-alerta-titulo  { font-size: .82rem; font-weight: 500; color: #1E293B; }
+.db-alerta-desc    { font-size: .7rem;  color: #94A3B8; line-height: 1.3; }
+
+.db-alerta-num {
+    min-width: 28px; height: 28px;
+    border-radius: 99px;
+    background: #EEF2FF;
+    color: #4F46E5;
+    font-size: .8rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* ── Separador interno de tarjeta ─────────────────────────── */
+.db-separador {
+    border: none;
+    border-top: 1px solid #F1F5F9;
+    margin: 1.25rem 0;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ESTADO GENERAL DE FICHAS
+   ═══════════════════════════════════════════════════════════ */
+.db-estado-lista { display: flex; flex-direction: column; flex: 1; }
+
+.db-estado-item {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: .75rem;
+}
+.db-estado-label {
+    font-size: .78rem;
+    font-weight: 500;
+    color: #475569;
+    width: 72px;
+    flex-shrink: 0;
+}
+
+.db-estado-track {
+    flex: 1;
+    height: 9px;
+    background: #EEF0F5;
+    border-radius: 99px;
+    overflow: hidden;
+}
+.db-estado-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width .5s ease;
+    min-width: 6px;
+}
+.db-fill-critico    { background: linear-gradient(90deg, #4F46E5, #6D28D9); }
+.db-fill-riesgo     { background: linear-gradient(90deg, #EF4444, #DC2626); }
+.db-fill-excelencia { background: linear-gradient(90deg, #3B82F6, #4F46E5); }
+
+.db-estado-num {
+    font-size: .85rem;
+    font-weight: 700;
+    color: #1E293B;
+    min-width: 1.5rem;
+    text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ACCESOS RÁPIDOS
+   ═══════════════════════════════════════════════════════════ */
+.db-accesos-titulo {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1E293B;
+    margin-bottom: 1rem;
+    padding-top: .25rem;
+}
+
+.db-accesos-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.db-acceso {
+    background: #FFFFFF;
+    border-radius: 20px;
+    box-shadow: 0 2px 18px rgba(59,130,246,.07), 0 1px 4px rgba(0,0,0,.04);
+    padding: 1.5rem 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    text-decoration: none;
+    color: #1E293B;
+    border: 1px solid rgba(226,232,240,.7);
+    transition: box-shadow .25s, transform .25s;
+}
+.db-acceso:hover {
+    box-shadow: 0 8px 32px rgba(59,130,246,.18);
+    transform: translateY(-3px);
+    color: #1E293B;
+    text-decoration: none;
+}
+
+.db-acceso-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #3B82F6, #4F46E5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(59,130,246,.4);
+}
+.db-acceso-icon .bi {
+    font-size: 1.65rem;
+    color: #FFFFFF;
+    display: block;
+}
+
+.db-acceso-body { flex: 1; }
+
+.db-acceso-nombre {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1E293B;
+    margin: 0 0 .2rem;
+}
+.db-acceso-desc {
+    font-size: .76rem;
+    color: #64748B;
+    margin: 0;
+}
+
+.db-acceso-chevron {
+    font-size: 1.1rem;
+    color: #CBD5E1;
+    flex-shrink: 0;
+    transition: color .2s, transform .2s;
+}
+.db-acceso:hover .db-acceso-chevron {
+    color: #3B82F6;
+    transform: translateX(3px);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 1100px) {
+    .db-kpi-grid  { grid-template-columns: 1fr 1fr; }
+    .db-main-grid { grid-template-columns: 1fr; }
+    .db-kpi-stack { flex-direction: row; }
+}
+
+@media (max-width: 640px) {
+    .db-root          { padding: 1rem 1.1rem; }
+    .db-titulo        { font-size: 1.5rem; }
+    .db-kpi-grid      { grid-template-columns: 1fr; }
+    .db-kpi-stack     { flex-direction: column; }
+    .db-accesos-grid  { grid-template-columns: 1fr; }
+    .db-competencias-body { flex-direction: column; align-items: center; gap: 1.5rem; }
+    .db-leyenda-vertical  { display: none; }
+    .db-donut-canvas      { width: 160px; height: 160px; }
+    .db-kpi-grande    { font-size: 2rem; }
+}
+
+@media (max-width: 1500px) {
+
+    .db-leyenda-vertical {
+        display: none;
+    }
+    .db-donut-canvas {
+        width: 200px;
+        height: 200px;
+
+        
+    }
+
+    .db-competencias-body {
+        align-items: center;
+        gap: 2rem;
+    }
+
+}

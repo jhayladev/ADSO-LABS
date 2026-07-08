@@ -1,0 +1,1466 @@
+@page "/perfil"
+@attribute [Authorize(Roles = "Aprendiz")]
+@rendermode InteractiveServer
+@layout AdsoLabs.Web.Components.Layout.AprendizLayout
+@using AdsoLabs.Application.DTOs.Perfil
+@using AdsoLabs.Application.DTOs.Informe
+@using AdsoLabs.Application.DTOs.Instructor
+@using AdsoLabs.Application.DTOs.Monitoria
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@inject ProfileApiService ProfileApi
+@inject InformeAprendizApiService InformeApi
+@inject MonitoriaApiService MonitoriaApi
+@inject InstructorApiService InstructorApi
+@inject SesionService SesionService
+
+@if (cargando)
+{
+    <div class="portal-loading">
+        <div class="spinner-border portal-spinner" role="status"><span class="visually-hidden">Cargando...</span></div>
+        <p>Cargando tu perfil...</p>
+    </div>
+}
+else if (perfil is null)
+{
+    <div class="alert alert-danger m-4"><i class="bi bi-exclamation-circle me-2"></i>No se pudo cargar tu perfil. Intenta nuevamente.</div>
+}
+else
+{
+    <div class="portal">
+
+        @* ── Hero ── *@
+        <div class="portal-hero">
+            <div class="hero-left">
+                <div class="hero-avatar">@Iniciales</div>
+                <div class="hero-info">
+                    <h1 class="hero-nombre">@perfil.Nombres @perfil.Apellidos</h1>
+                    <span class="hero-correo">@perfil.Correo</span>
+                    <span class="hero-doc">@perfil.TipoDocumento &middot; @perfil.NumeroDocumento</span>
+                </div>
+            </div>
+            <div class="hero-right">
+                <span class="hero-estado @ClaseEstado(perfil.Estado)">@perfil.Estado</span>
+                <div class="hero-stats">
+                    <div class="hero-stat">
+                        <span class="hero-stat-val">@perfil.Fichas.Count</span>
+                        <span class="hero-stat-lbl">@(perfil.Fichas.Count == 1 ? "Ficha" : "Fichas")</span>
+                    </div>
+                    <div class="hero-stat-sep"></div>
+                    <div class="hero-stat">
+                        <span class="hero-stat-val">@CompetenciasVista</span>
+                        <span class="hero-stat-lbl">Aprobadas</span>
+                    </div>
+                    <div class="hero-stat-sep"></div>
+                    <div class="hero-stat">
+                        <span class="hero-stat-val">@ProgresoGeneral%</span>
+                        <span class="hero-stat-lbl">Progreso</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @* ── Tabs ── *@
+        <div class="portal-tabs">
+            <button class="ptab @(tab == "datos"      ? "ptab-activo" : "")" @onclick='() => tab = "datos"'>
+                <i class="bi bi-person-lines-fill"></i><span> Mis Datos</span>
+            </button>
+            <button class="ptab @(tab == "acudiente"  ? "ptab-activo" : "")" @onclick="CambiarTabAcudiente">
+                <i class="bi bi-people-fill"></i><span> Acudiente</span>
+            </button>
+            <button class="ptab @(tab == "cronograma" ? "ptab-activo" : "")" @onclick="CambiarTabCronograma">
+                <i class="bi bi-calendar-week-fill"></i><span> Cronograma</span>
+            </button>
+            <button class="ptab @(tab == "formacion"  ? "ptab-activo" : "")" @onclick='() => tab = "formacion"'>
+                <i class="bi bi-mortarboard-fill"></i><span> Mi Formación</span>
+            </button>
+            <button class="ptab @(tab == "observaciones" ? "ptab-activo" : "")" @onclick="CambiarTabObservaciones">
+                <i class="bi bi-chat-left-text-fill"></i><span> Observaciones</span>
+            </button>
+            <button class="ptab @(tab == "monitorias" ? "ptab-activo" : "")" @onclick="CambiarTabMonitorias">
+                <i class="bi bi-people-fill"></i><span> Monitorías</span>
+            </button>
+            @if (esMonitor)
+            {
+                <button class="ptab @(tab == "gestion-monitorias" ? "ptab-activo" : "")" @onclick="CambiarTabGestionMonitorias">
+                    <i class="bi bi-person-workspace"></i><span> Gestión de Monitorías</span>
+                </button>
+            }
+        </div>
+
+        @* ══════════════════════════════════════════
+           MIS DATOS
+           ══════════════════════════════════════════ *@
+        @if (tab == "datos")
+        {
+            <div class="tab-content-area">
+
+                @* ─ Información Personal (editable) ─ *@
+                <div class="info-card">
+                    <div class="info-card-head">
+                        <i class="bi bi-person-badge-fill"></i><span>Información Personal</span>
+                        @if (!editandoPersonal)
+                        {
+                            <button class="btn-edit-inline" @onclick="IniciarEdicionPersonal"><i class="bi bi-pencil-square"></i> Editar</button>
+                        }
+                    </div>
+                    @if (editandoPersonal)
+                    {
+                        @if (!string.IsNullOrEmpty(errorEdicion))
+                        {
+                            <div class="alerta-error"><i class="bi bi-exclamation-triangle"></i> @errorEdicion</div>
+                        }
+                        <div class="datos-readonly">
+                            <div class="info-row"><span class="info-lbl">Tipo documento</span><span class="info-val">@(perfil.TipoDocumento.Length > 0 ? perfil.TipoDocumento : "--")</span></div>
+                            <div class="info-row"><span class="info-lbl">Número documento</span><span class="info-val">@perfil.NumeroDocumento</span></div>
+                        </div>
+                        <div class="datos-editables-grid">
+                            <div class="campo-form">
+                                <label>Fecha de nacimiento</label>
+                                <input type="date" @bind="formEdicion.FechaNacimiento" />
+                            </div>
+                            <div class="campo-form">
+                                <label>Estrato (1–6)</label>
+                                <input type="number" min="1" max="6" @bind="formEdicion.Estrato" placeholder="Estrato" />
+                            </div>
+                            <div class="campo-form">
+                                <label>Tipo de población</label>
+                                <input @bind="formEdicion.TipoPoblacion" placeholder="Ej: Víctima de conflicto, Indígena..." />
+                            </div>
+                            <div class="campo-form">
+                                <label>Condición especial</label>
+                                <input @bind="formEdicion.CondicionEspecial" placeholder="Ej: Discapacidad auditiva, Ninguna..." />
+                            </div>
+                        </div>
+                        <div class="form-acciones">
+                            <button class="btn-primary-sm" @onclick="GuardarPersonal" disabled="@guardandoEdicion">@(guardandoEdicion ? "Guardando..." : "Guardar")</button>
+                            <button class="btn-ghost-sm" @onclick="CancelarEdicionPersonal">Cancelar</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="info-grid-2col">
+                            <div class="info-row"><span class="info-lbl">Tipo documento</span><span class="info-val">@(perfil.TipoDocumento.Length > 0 ? perfil.TipoDocumento : "--")</span></div>
+                            <div class="info-row"><span class="info-lbl">Número documento</span><span class="info-val">@perfil.NumeroDocumento</span></div>
+                            <div class="info-row"><span class="info-lbl">Fecha de nacimiento</span><span class="info-val">@(perfil.FechaNacimiento?.ToString("dd/MM/yyyy") ?? "--")</span></div>
+                            <div class="info-row"><span class="info-lbl">Estrato</span><span class="info-val">@(perfil.Estrato?.ToString() ?? "--")</span></div>
+                            <div class="info-row"><span class="info-lbl">Tipo de población</span><span class="info-val">@(perfil.TipoPoblacion ?? "--")</span></div>
+                            <div class="info-row"><span class="info-lbl">Condición especial</span><span class="info-val">@(perfil.CondicionEspecial ?? "--")</span></div>
+                        </div>
+                    }
+                </div>
+
+                @* ─ Información de Contacto (editable) ─ *@
+                <div class="info-card">
+                    <div class="info-card-head">
+                        <i class="bi bi-telephone-fill"></i><span>Información de Contacto</span>
+                        @if (!editandoContacto)
+                        {
+                            <button class="btn-edit-inline" @onclick="IniciarEdicionContacto"><i class="bi bi-pencil-square"></i> Editar</button>
+                        }
+                    </div>
+                    @if (editandoContacto)
+                    {
+                        @if (!string.IsNullOrEmpty(errorEdicion))
+                        {
+                            <div class="alerta-error"><i class="bi bi-exclamation-triangle"></i> @errorEdicion</div>
+                        }
+                        <div class="datos-editables-grid">
+                            <div class="campo-form"><label>Teléfono</label><input @bind="formEdicion.Telefono" placeholder="Teléfono de contacto" /></div>
+                            <div class="campo-form"><label>Municipio</label><input @bind="formEdicion.Municipio" placeholder="Municipio" /></div>
+                        </div>
+                        <div class="campo-form"><label>Dirección</label><input @bind="formEdicion.Direccion" placeholder="Dirección de residencia" /></div>
+                        <div class="form-acciones">
+                            <button class="btn-primary-sm" @onclick="GuardarContacto" disabled="@guardandoEdicion">@(guardandoEdicion ? "Guardando..." : "Guardar")</button>
+                            <button class="btn-ghost-sm" @onclick="CancelarEdicionContacto">Cancelar</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="info-grid-2col">
+                            <div class="info-row"><span class="info-lbl">Teléfono</span><span class="info-val">@(perfil.Telefono ?? "--")</span></div>
+                            <div class="info-row"><span class="info-lbl">Municipio</span><span class="info-val">@(perfil.Municipio ?? "--")</span></div>
+                        </div>
+                        <div class="info-row"><span class="info-lbl">Dirección</span><span class="info-val">@(perfil.Direccion ?? "--")</span></div>
+                    }
+                </div>
+
+                @* ─ Contacto de Emergencia (editable) ─ *@
+                <div class="info-card">
+                    <div class="info-card-head">
+                        <i class="bi bi-heart-pulse-fill"></i><span>Contacto de Emergencia</span>
+                        @if (!editandoEmergencia)
+                        {
+                            <button class="btn-edit-inline" @onclick="IniciarEdicionEmergencia"><i class="bi bi-pencil-square"></i> Editar</button>
+                        }
+                    </div>
+                    @if (editandoEmergencia)
+                    {
+                        @if (!string.IsNullOrEmpty(errorEdicion))
+                        {
+                            <div class="alerta-error"><i class="bi bi-exclamation-triangle"></i> @errorEdicion</div>
+                        }
+                        <div class="datos-editables-grid">
+                            <div class="campo-form"><label>Nombre del contacto</label><input @bind="formEdicion.ContactoEmergenciaNombre" placeholder="Nombre completo" /></div>
+                            <div class="campo-form"><label>Teléfono de emergencia</label><input @bind="formEdicion.ContactoEmergenciaTelefono" placeholder="Teléfono" /></div>
+                        </div>
+                        <div class="form-acciones">
+                            <button class="btn-primary-sm" @onclick="GuardarEmergencia" disabled="@guardandoEdicion">@(guardandoEdicion ? "Guardando..." : "Guardar")</button>
+                            <button class="btn-ghost-sm" @onclick="CancelarEdicionEmergencia">Cancelar</button>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="emergencia-body">
+                            <div class="emergencia-item">
+                                <div class="emergencia-icono"><i class="bi bi-person-fill"></i></div>
+                                <div class="emergencia-datos"><span class="info-lbl">Nombre</span><span class="info-val">@(perfil.ContactoEmergenciaNombre ?? "--")</span></div>
+                            </div>
+                            <div class="emergencia-item">
+                                <div class="emergencia-icono"><i class="bi bi-telephone-fill"></i></div>
+                                <div class="emergencia-datos"><span class="info-lbl">Teléfono</span><span class="info-val">@(perfil.ContactoEmergenciaTelefono ?? "--")</span></div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+            </div>
+        }
+
+        @* ══════════════════════════════════════════
+           ACUDIENTE
+           ══════════════════════════════════════════ *@
+        @if (tab == "acudiente")
+        {
+            <div class="tab-content-area">
+                @if (cargandoAcudiente)
+                {
+                    <div class="loading-inline"><div class="spinner-border spinner-border-sm"></div><span>Cargando...</span></div>
+                }
+                else if (!editandoAcudiente && acudiente is null)
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="bi bi-person-plus-fill"></i></div>
+                        <h3>Sin acudiente registrado</h3>
+                        <p>Agrega los datos de tu acudiente o representante legal.</p>
+                        <button class="btn-primary-sm" @onclick="IniciarEdicionAcudiente"><i class="bi bi-plus-circle"></i> Registrar acudiente</button>
+                    </div>
+                }
+                else if (editandoAcudiente)
+                {
+                    <div class="info-card form-card">
+                        <div class="info-card-head"><i class="bi bi-people-fill"></i><span>Datos del Acudiente</span></div>
+                        @if (!string.IsNullOrEmpty(errorAcudiente))
+                        {
+                            <div class="alerta-error"><i class="bi bi-exclamation-triangle"></i> @errorAcudiente</div>
+                        }
+                        <div class="campos-grid">
+                            <div class="campo-form"><label>Nombre <span class="req">*</span></label><input @bind="formAcudiente.Nombre" placeholder="Nombre completo" /></div>
+                            <div class="campo-form"><label>Parentesco <span class="req">*</span></label><input @bind="formAcudiente.Parentesco" placeholder="Ej: Madre, Padre, Tutor" /></div>
+                            <div class="campo-form"><label>Teléfono <span class="req">*</span></label><input @bind="formAcudiente.Telefono" placeholder="Teléfono de contacto" /></div>
+                            <div class="campo-form"><label>Correo</label><input @bind="formAcudiente.Correo" placeholder="Correo electrónico" type="email" /></div>
+                        </div>
+                        <div class="campo-form"><label>Dirección</label><input @bind="formAcudiente.Direccion" placeholder="Dirección de residencia" /></div>
+                        <div class="form-acciones" style="margin-top: 8px;">
+                            <button class="btn-primary-sm" @onclick="GuardarAcudiente" disabled="@guardandoAcudiente">@(guardandoAcudiente ? "Guardando..." : "Guardar")</button>
+                            <button class="btn-ghost-sm" @onclick="CancelarEdicionAcudiente">Cancelar</button>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="acudiente-hero">
+                        <div class="acudiente-avatar-lg"><i class="bi bi-person-circle"></i></div>
+                        <div class="acudiente-main">
+                            <h2 class="acudiente-nombre">@acudiente!.Nombre</h2>
+                            <span class="acudiente-parentesco-badge">@acudiente.Parentesco</span>
+                        </div>
+                        <button class="btn-edit-inline" @onclick="IniciarEdicionAcudiente"><i class="bi bi-pencil-square"></i> Editar</button>
+                    </div>
+                    <div class="acudiente-detalles">
+                        <div class="acudiente-detalle">
+                            <div class="acudiente-det-icono"><i class="bi bi-telephone-fill"></i></div>
+                            <div><span class="info-lbl">Teléfono</span><span class="info-val">@acudiente.Telefono</span></div>
+                        </div>
+                        <div class="acudiente-detalle">
+                            <div class="acudiente-det-icono"><i class="bi bi-envelope-fill"></i></div>
+                            <div><span class="info-lbl">Correo</span><span class="info-val">@(acudiente.Correo ?? "--")</span></div>
+                        </div>
+                        <div class="acudiente-detalle">
+                            <div class="acudiente-det-icono"><i class="bi bi-geo-alt-fill"></i></div>
+                            <div><span class="info-lbl">Dirección</span><span class="info-val">@(acudiente.Direccion ?? "--")</span></div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        @* ══════════════════════════════════════════
+           CRONOGRAMA
+           ══════════════════════════════════════════ *@
+        @if (tab == "cronograma")
+        {
+            <div class="tab-content-area">
+                @if (cargandoCronograma)
+                {
+                    <div class="loading-inline"><div class="spinner-border spinner-border-sm"></div><span>Cargando cronograma...</span></div>
+                }
+                else
+                {
+                    @if (cronograma?.Patrocinio is not null)
+                    {
+                        <div class="patrocinio-bloque">
+                            <div class="patrocinio-icono"><i class="bi bi-building-fill-check"></i></div>
+                            <div class="patrocinio-body">
+                                <span class="patrocinio-titulo-lbl">Horario Patrocinado</span>
+                                <span class="patrocinio-empresa">@cronograma.Patrocinio.NombreEmpresa</span>
+                                <span class="patrocinio-etapa">Etapa @cronograma.Patrocinio.Etapa</span>
+                                @if (cronograma.Patrocinio.HoraInicio.HasValue)
+                                {
+                                    <span class="patrocinio-horario"><i class="bi bi-clock"></i> @cronograma.Patrocinio.HoraInicio.Value.ToString("HH:mm") – @cronograma.Patrocinio.HoraFin!.Value.ToString("HH:mm")</span>
+                                }
+                            </div>
+                            @if (cronograma.Patrocinio.FechaInicioEtapa.HasValue)
+                            {
+                                <div class="patrocinio-fechas">
+                                    <span>@cronograma.Patrocinio.FechaInicioEtapa.Value.ToString("dd MMM yyyy")</span>
+                                    <i class="bi bi-arrow-right"></i>
+                                    <span>@(cronograma.Patrocinio.FechaFinEtapa?.ToString("dd MMM yyyy") ?? "En curso")</span>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <div class="crono-vistas">
+                        <button class="crono-vista-btn @(vistaCrono == "calendario" ? "crono-vista-activa" : "")" @onclick='() => vistaCrono = "calendario"'>
+                            <i class="bi bi-calendar3"></i><span>Calendario</span>
+                        </button>
+                        <button class="crono-vista-btn @(vistaCrono == "lista"      ? "crono-vista-activa" : "")" @onclick='() => vistaCrono = "lista"'>
+                            <i class="bi bi-list-ul"></i><span>Lista</span>
+                        </button>
+                        <button class="crono-vista-btn @(vistaCrono == "proximas"   ? "crono-vista-activa" : "")" @onclick='() => vistaCrono = "proximas"'>
+                            <i class="bi bi-calendar-event"></i><span>Próximas</span>
+                        </button>
+                        <button class="crono-vista-btn @(vistaCrono == "historial"  ? "crono-vista-activa" : "")" @onclick='() => vistaCrono = "historial"'>
+                            <i class="bi bi-clock-history"></i><span>Historial</span>
+                        </button>
+                    </div>
+
+                    @if (vistaCrono == "calendario")
+                    {
+                        <div class="cal-wrap">
+                            <div class="cal-nav">
+                                <button class="cal-nav-btn" @onclick="SemanaAnterior"><i class="bi bi-chevron-left"></i></button>
+                                <span class="cal-semana-lbl">@SemanaLabel</span>
+                                <button class="cal-nav-btn" @onclick="SemanaSiguiente"><i class="bi bi-chevron-right"></i></button>
+                                <button class="cal-hoy-btn" @onclick="IrAHoy">Hoy</button>
+                                @if (PrimeraClaseSemana.HasValue)
+                                {
+                                    <button class="cal-inicio-btn" @onclick="IrAPrimeraClase" title="Ir a la primera clase programada">
+                                        <i class="bi bi-skip-start-fill"></i> Primera clase
+                                    </button>
+                                }
+                            </div>
+                            @if (!HaySesionesEnSemana)
+                            {
+                                <div class="empty-state">
+                                    <div class="empty-icon"><i class="bi bi-calendar-x"></i></div>
+                                    <h3>Sin sesiones esta semana</h3>
+                                    <p>No hay clases del @semanaVista.ToString("dd MMM") al @semanaVista.AddDays(5).ToString("dd MMM yyyy").</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="cal-outer">
+                                    <div class="cal-headers">
+                                        <div class="cal-time-spacer"></div>
+                                        @foreach (var dh in DiasSemana)
+                                        {
+                                            var ehoy = dh == DateOnly.FromDateTime(DateTime.Today);
+                                            <div class="cal-day-hdr @(ehoy ? "cal-hoy-hdr" : "")">
+                                                <span class="cal-dow">@dh.ToString("ddd", new System.Globalization.CultureInfo("es-CO")).ToUpper()</span>
+                                                <span class="cal-dnum @(ehoy ? "cal-dnum-hoy" : "")">@dh.Day</span>
+                                            </div>
+                                        }
+                                    </div>
+                                    <div class="cal-body-wrap">
+                                        <div class="cal-time-axis">
+                                            @for (int hh = CAL_HORA_INICIO; hh < CAL_HORA_FIN; hh++)
+                                            {
+                                                <div class="cal-tick">@hh.ToString("D2"):00</div>
+                                            }
+                                        </div>
+                                        @foreach (var dc in DiasSemana)
+                                        {
+                                            var ehoyCol = dc == DateOnly.FromDateTime(DateTime.Today);
+                                            var bloques = SesionesDia(dc).ToList();
+                                            <div class="cal-col @(ehoyCol ? "cal-col-hoy" : "")">
+                                                @for (int hh = CAL_HORA_INICIO; hh < CAL_HORA_FIN; hh++)
+                                                {
+                                                    <div class="cal-row @(hh % 2 == 0 ? "cal-row-even" : "")"></div>
+                                                }
+                                                @foreach (var s in bloques)
+                                                {
+                                                    var topPx  = (int)((s.HoraInicio.Hour - CAL_HORA_INICIO + s.HoraInicio.Minute / 60.0) * CAL_PIXEL_H);
+                                                    var durH   = (s.HoraFin.ToTimeSpan() - s.HoraInicio.ToTimeSpan()).TotalHours;
+                                                    var hPx    = (int)Math.Max(durH * CAL_PIXEL_H, 40);
+                                                    var esHoyB = s.Fecha == DateOnly.FromDateTime(DateTime.Today);
+                                                    <div class="cal-bloque @ClaseBloqueCalendario(s) @(esHoyB ? "cal-bl-hoy" : "")" style="top:@(topPx)px;height:@(hPx)px">
+                                                        <span class="cal-bl-comp">@AcortarTexto(s.NombreCompetencia, 28)</span>
+                                                        <span class="cal-bl-hora">@s.HoraInicio.ToString("HH:mm")–@s.HoraFin.ToString("HH:mm")</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        var hoy       = DateOnly.FromDateTime(DateTime.Today);
+                        var finSemana = hoy.AddDays(7);
+                        var sHoy      = SesionesFiltradas.Where(s => s.Fecha == hoy).OrderBy(s => s.HoraInicio).ToList();
+                        var sSemana   = SesionesFiltradas.Where(s => s.Fecha > hoy && s.Fecha <= finSemana).OrderBy(s => s.Fecha).ThenBy(s => s.HoraInicio).ToList();
+                        var sProx     = SesionesFiltradas.Where(s => s.Fecha > finSemana).OrderBy(s => s.Fecha).ThenBy(s => s.HoraInicio).ToList();
+                        var sHist     = SesionesFiltradas.Where(s => s.Fecha < hoy).OrderByDescending(s => s.Fecha).ThenBy(s => s.HoraInicio).ToList();
+
+                        @if (!SesionesFiltradas.Any())
+                        {
+                            <div class="empty-state">
+                                <div class="empty-icon"><i class="bi bi-calendar-x"></i></div>
+                                <h3>Sin sesiones</h3>
+                                <p>@(vistaCrono == "proximas" ? "No hay sesiones programadas próximamente." : vistaCrono == "historial" ? "No hay sesiones en el historial." : "No hay sesiones registradas.")</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @if (sHoy.Any())
+                            {
+                                <div class="crono-seccion">
+                                    <div class="crono-titulo titulo-hoy"><i class="bi bi-sun-fill"></i> Hoy</div>
+                                    @foreach (var s in sHoy)
+                                    {
+                                        var durHoy = (int)Math.Abs((s.HoraFin.ToTimeSpan() - s.HoraInicio.ToTimeSpan()).TotalMinutes);
+                                        <div class="sesion-card sesion-card-hoy">
+                                            <div class="sesion-fecha sfecha-hoy">
+                                                <span class="sfecha-num">@s.Fecha.Day</span>
+                                                <span class="sfecha-mes">@s.Fecha.ToString("MMM")</span>
+                                                <span class="sfecha-dow">@s.Fecha.DayOfWeek.ToString()[..3].ToUpper()</span>
+                                            </div>
+                                            <div class="sesion-body">
+                                                <span class="sesion-comp">@s.NombreCompetencia</span>
+                                                <div class="sesion-meta">
+                                                    <span><i class="bi bi-clock"></i> @s.HoraInicio.ToString("HH:mm") – @s.HoraFin.ToString("HH:mm")</span>
+                                                    <span class="meta-sep">·</span>
+                                                    <span><i class="bi bi-person"></i> @s.NombreInstructor</span>
+                                                    <span class="meta-sep">·</span>
+                                                    <span><i class="bi bi-journal-bookmark"></i> Ficha @s.NumeroFicha</span>
+                                                </div>
+                                            </div>
+                                            <div class="sesion-tail">
+                                                <span class="sesion-dur">@durHoy min</span>
+                                                <span class="sesion-badge @ClaseSesion(s.EstadoSesion)">@s.EstadoSesion</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @if (sSemana.Any())
+                            {
+                                <div class="crono-seccion">
+                                    <div class="crono-titulo"><i class="bi bi-calendar-week"></i> Esta semana</div>
+                                    @foreach (var s in sSemana)
+                                    {
+                                        var durSem = (int)Math.Abs((s.HoraFin.ToTimeSpan() - s.HoraInicio.ToTimeSpan()).TotalMinutes);
+                                        <div class="sesion-card">
+                                            <div class="sesion-fecha">
+                                                <span class="sfecha-num">@s.Fecha.Day</span>
+                                                <span class="sfecha-mes">@s.Fecha.ToString("MMM")</span>
+                                                <span class="sfecha-dow">@s.Fecha.DayOfWeek.ToString()[..3].ToUpper()</span>
+                                            </div>
+                                            <div class="sesion-body">
+                                                <span class="sesion-comp">@s.NombreCompetencia</span>
+                                                <div class="sesion-meta">
+                                                    <span><i class="bi bi-clock"></i> @s.HoraInicio.ToString("HH:mm") – @s.HoraFin.ToString("HH:mm")</span>
+                                                    <span class="meta-sep">·</span>
+                                                    <span><i class="bi bi-person"></i> @s.NombreInstructor</span>
+                                                    <span class="meta-sep">·</span>
+                                                    <span><i class="bi bi-journal-bookmark"></i> Ficha @s.NumeroFicha</span>
+                                                </div>
+                                            </div>
+                                            <div class="sesion-tail">
+                                                <span class="sesion-dur">@durSem min</span>
+                                                <span class="sesion-badge @ClaseSesion(s.EstadoSesion)">@s.EstadoSesion</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @if (sProx.Any())
+                            {
+                                <div class="crono-seccion">
+                                    <div class="crono-titulo"><i class="bi bi-arrow-right-circle-fill"></i> Próximamente</div>
+                                    @foreach (var s in sProx)
+                                    {
+                                        var durProx = (int)Math.Abs((s.HoraFin.ToTimeSpan() - s.HoraInicio.ToTimeSpan()).TotalMinutes);
+                                        <div class="sesion-card">
+                                            <div class="sesion-fecha">
+                                                <span class="sfecha-num">@s.Fecha.Day</span>
+                                                <span class="sfecha-mes">@s.Fecha.ToString("MMM")</span>
+                                                <span class="sfecha-dow">@s.Fecha.DayOfWeek.ToString()[..3].ToUpper()</span>
+                                            </div>
+                                            <div class="sesion-body">
+                                                <span class="sesion-comp">@s.NombreCompetencia</span>
+                                                <div class="sesion-meta">
+                                                    <span><i class="bi bi-clock"></i> @s.HoraInicio.ToString("HH:mm") – @s.HoraFin.ToString("HH:mm")</span>
+                                                    <span class="meta-sep">·</span>
+                                                    <span><i class="bi bi-person"></i> @s.NombreInstructor</span>
+                                                    <span class="meta-sep">·</span>
+                                                    <span><i class="bi bi-journal-bookmark"></i> Ficha @s.NumeroFicha</span>
+                                                </div>
+                                            </div>
+                                            <div class="sesion-tail">
+                                                <span class="sesion-dur">@durProx min</span>
+                                                <span class="sesion-badge @ClaseSesion(s.EstadoSesion)">@s.EstadoSesion</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                            @if (sHist.Any())
+                            {
+                                <div class="crono-seccion crono-historial">
+                                    <div class="crono-titulo titulo-muted"><i class="bi bi-clock-history"></i> Historial</div>
+                                    @foreach (var s in sHist.Take(20))
+                                    {
+                                        var durHist = (int)Math.Abs((s.HoraFin.ToTimeSpan() - s.HoraInicio.ToTimeSpan()).TotalMinutes);
+                                        <div class="sesion-card sesion-card-pasada">
+                                            <div class="sesion-fecha sfecha-pasada">
+                                                <span class="sfecha-num">@s.Fecha.Day</span>
+                                                <span class="sfecha-mes">@s.Fecha.ToString("MMM")</span>
+                                                <span class="sfecha-dow">@s.Fecha.DayOfWeek.ToString()[..3].ToUpper()</span>
+                                            </div>
+                                            <div class="sesion-body">
+                                                <span class="sesion-comp sesion-comp-pasada">@s.NombreCompetencia</span>
+                                                <div class="sesion-meta">
+                                                    <span><i class="bi bi-clock"></i> @s.HoraInicio.ToString("HH:mm") – @s.HoraFin.ToString("HH:mm")</span>
+                                                    <span class="meta-sep">·</span>
+                                                    <span><i class="bi bi-person"></i> @s.NombreInstructor</span>
+                                                    <span class="meta-sep">·</span>
+                                                    <span><i class="bi bi-journal-bookmark"></i> Ficha @s.NumeroFicha</span>
+                                                </div>
+                                            </div>
+                                            <div class="sesion-tail">
+                                                <span class="sesion-dur">@durHist min</span>
+                                                <span class="sesion-badge @ClaseSesion(s.EstadoSesion)">@s.EstadoSesion</span>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        }
+                    }
+                }
+            </div>
+        }
+
+        @* ══════════════════════════════════════════
+           MI FORMACIÓN
+           ══════════════════════════════════════════ *@
+        @if (tab == "formacion")
+        {
+            <div class="tab-content-area">
+                @if (!perfil.Fichas.Any())
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="bi bi-journal-x"></i></div>
+                        <h3>Sin fichas asignadas</h3>
+                        <p>No estás vinculado a ninguna ficha de formación.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="formacion-overview">
+                        <div class="fov-ring-wrap">
+                            <svg class="progress-ring" viewBox="0 0 100 100">
+                                <circle class="ring-bg"   cx="50" cy="50" r="38" />
+                                <circle class="ring-fill" cx="50" cy="50" r="38"
+                                        stroke-dasharray="@((int)(238.76 * ProgresoGeneral / 100)) 239"
+                                        transform="rotate(-90 50 50)" />
+                                <text x="50" y="46" text-anchor="middle" class="ring-pct">@ProgresoGeneral%</text>
+                                <text x="50" y="61" text-anchor="middle" class="ring-sub">completado</text>
+                            </svg>
+                        </div>
+                        <div class="fov-stats">
+                            <div class="fov-stat fov-vista">
+                                <span class="fov-num">@CompetenciasVista</span>
+                                <span class="fov-lbl">Aprobadas</span>
+                            </div>
+                            <div class="fov-stat fov-curso">
+                                <span class="fov-num">@CompetenciasEnCurso</span>
+                                <span class="fov-lbl">En Curso</span>
+                            </div>
+                            <div class="fov-stat fov-pendiente">
+                                <span class="fov-num">@CompetenciasPendientes</span>
+                                <span class="fov-lbl">Pendientes</span>
+                            </div>
+                        </div>
+                        <div class="fov-bar-wrap">
+                            <div class="fov-bar-track">
+                                <div class="fov-bar-fill" style="width: @ProgresoGeneral%"></div>
+                            </div>
+                            <span class="fov-bar-lbl">@CompetenciasVista de @TotalCompetencias competencias completadas</span>
+                        </div>
+                    </div>
+
+                    <div class="comp-filtros">
+                        <button class="comp-filtro @(filtroComp == "todas"     ? "activo" : "")" @onclick='() => filtroComp = "todas"'    >Todas (@TotalCompetencias)</button>
+                        <button class="comp-filtro @(filtroComp == "vista"     ? "activo" : "")" @onclick='() => filtroComp = "vista"'    ><i class="bi bi-check-circle-fill"></i> Aprobadas (@CompetenciasVista)</button>
+                        <button class="comp-filtro @(filtroComp == "en-curso"  ? "activo" : "")" @onclick='() => filtroComp = "en-curso"' ><i class="bi bi-play-circle-fill"></i> En Curso (@CompetenciasEnCurso)</button>
+                        <button class="comp-filtro @(filtroComp == "pendiente" ? "activo" : "")" @onclick='() => filtroComp = "pendiente"'><i class="bi bi-circle"></i> Pendientes (@CompetenciasPendientes)</button>
+                    </div>
+
+                    @foreach (var ficha in perfil.Fichas)
+                    {
+                        var compsFiltradas = filtroComp switch
+                        {
+                            "vista"     => ficha.Competencias.Where(c => c.Estado == "Vista").ToList(),
+                            "en-curso"  => ficha.Competencias.Where(c => c.Estado == "En Curso").ToList(),
+                            "pendiente" => ficha.Competencias.Where(c => c.Estado != "Vista" && c.Estado != "En Curso").ToList(),
+                            _           => ficha.Competencias
+                        };
+
+                        if (!compsFiltradas.Any()) continue;
+
+                        <div class="ficha-grupo">
+                            <div class="ficha-grupo-head">
+                                <span class="ficha-num-chip"><i class="bi bi-journal-bookmark-fill"></i> Ficha @ficha.NumeroFicha</span>
+                                <span class="ficha-ap-estado">@ficha.EstadoAprendizEnFicha</span>
+                            </div>
+                            <div class="comp-lista">
+                                @foreach (var comp in compsFiltradas)
+                                {
+                                    var claveComp = (ficha.NumeroFicha, comp.Nombre);
+                                    var expandido = competenciasExpandidas.Contains(claveComp);
+                                    <div class="comp-item @ClaseComp(comp.Estado)" style="cursor:pointer;" @onclick="() => ToggleCompetenciaExpandida(claveComp)">
+                                        <div class="comp-indicador"></div>
+                                        <div class="comp-info">
+                                            <span class="comp-nombre">@comp.Nombre</span>
+                                            @if (comp.TotalHoras.HasValue)
+                                            {
+                                                <span class="comp-horas"><i class="bi bi-clock"></i> @comp.TotalHoras h</span>
+                                            }
+                                        </div>
+                                        <span class="comp-badge @ClaseBadge(comp.Estado)">
+                                            @if (comp.Estado == "Vista") { <i class="bi bi-check-circle-fill"></i> }
+                                            else if (comp.Estado == "En Curso") { <i class="bi bi-play-circle-fill"></i> }
+                                            else { <i class="bi bi-circle"></i> }
+                                            @comp.Estado
+                                        </span>
+                                        <i class="bi @(expandido ? "bi-chevron-up" : "bi-chevron-down")" style="margin-left:8px;color:#9CA3AF;"></i>
+                                    </div>
+                                    @if (expandido)
+                                    {
+                                        @if (!comp.Resultados.Any())
+                                        {
+                                            <p class="monitoria-desc" style="margin-left:20px;">Esta competencia todavía no tiene resultados de aprendizaje programados.</p>
+                                        }
+                                        else
+                                        {
+                                            <table class="monitoria-tabla-mini" style="margin-left:20px;width:calc(100% - 20px);">
+                                                <thead><tr><th>Resultado</th><th>Programación</th><th>Instructor</th><th>Juicio</th></tr></thead>
+                                                <tbody>
+                                                    @foreach (var r in comp.Resultados)
+                                                    {
+                                                        <tr>
+                                                            <td>@r.Codigo · @r.Nombre</td>
+                                                            <td>@r.EstadoProgramacion</td>
+                                                            <td>@(r.NombreInstructor ?? "—")</td>
+                                                            <td><span class="comp-badge @ClaseJuicio(r.Juicio)">@r.Juicio</span></td>
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        }
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        }
+
+        @* ══════════════════════════════════════════
+           OBSERVACIONES
+           ══════════════════════════════════════════ *@
+        @if (tab == "observaciones")
+        {
+            <div class="tab-content-area">
+                @if (cargandoObservaciones)
+                {
+                    <div class="loading-inline"><div class="spinner-border spinner-border-sm"></div><span>Cargando observaciones...</span></div>
+                }
+                else if (!observaciones.Any())
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="bi bi-chat-left-text"></i></div>
+                        <h3>Sin observaciones</h3>
+                        <p>Todavía no tienes observaciones registradas por tus instructores.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var o in observaciones.OrderByDescending(o => o.Fecha))
+                    {
+                        <div class="info-card monitoria-card">
+                            <div class="info-card-head">
+                                <i class="bi bi-person-badge"></i><span>@o.NombreUsuario</span>
+                                <span class="obs-fecha monitoria-badge">@o.Fecha.ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                            <p class="monitoria-desc">@o.Descripcion</p>
+                        </div>
+                    }
+                }
+            </div>
+        }
+
+        @* ══════════════════════════════════════════
+           MONITORÍAS
+           ══════════════════════════════════════════ *@
+        @if (tab == "monitorias")
+        {
+            <div class="tab-content-area">
+                @if (!string.IsNullOrEmpty(mensajeMonitoria))
+                {
+                    <div class="@(errorMonitoria ? "alerta-error" : "alerta-exito")">
+                        <i class="bi @(errorMonitoria ? "bi-exclamation-triangle" : "bi-check-circle")"></i> @mensajeMonitoria
+                    </div>
+                }
+
+                @if (cargandoMonitorias)
+                {
+                    <div class="loading-inline"><div class="spinner-border spinner-border-sm"></div><span>Cargando monitorías...</span></div>
+                }
+                else if (!monitoriasVigentes.Any())
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="bi bi-people"></i></div>
+                        <h3>Sin monitorías vigentes</h3>
+                        <p>No hay monitorías activas en este momento.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var s in monitoriasVigentes)
+                    {
+                        <div class="info-card monitoria-card">
+                            <div class="info-card-head">
+                                <i class="bi bi-people-fill"></i><span>@s.Nombre</span>
+                            </div>
+                            @if (!string.IsNullOrEmpty(s.Descripcion))
+                            {
+                                <p class="monitoria-desc">@s.Descripcion</p>
+                            }
+                            <div class="info-grid-2col">
+                                <div class="info-row"><span class="info-lbl">Monitor</span><span class="info-val">@s.NombreMonitor</span></div>
+                                <div class="info-row"><span class="info-lbl">Jornada</span><span class="info-val">@s.Jornada</span></div>
+                                <div class="info-row"><span class="info-lbl">Modalidad</span><span class="info-val">@s.Modalidad</span></div>
+                                <div class="info-row"><span class="info-lbl">Horario</span><span class="info-val">@s.HoraInicio.ToString("HH:mm") – @s.HoraFin.ToString("HH:mm")</span></div>
+                                <div class="info-row"><span class="info-lbl">Plazo</span><span class="info-val">@s.FechaInicio.ToString("dd/MM/yyyy") @(s.FechaFin.HasValue ? $"– {s.FechaFin.Value:dd/MM/yyyy}" : "(sin fecha de fin)")</span></div>
+                                <div class="info-row"><span class="info-lbl">Inscritos</span><span class="info-val">@s.TotalInscritos</span></div>
+                            </div>
+                            @if (s.IdAprendizMonitor == idAprendizActual)
+                            {
+                                <p class="monitoria-desc"><i class="bi bi-info-circle"></i> Eres el monitor de esta sesión.</p>
+                            }
+                            else
+                            {
+                                <div class="form-acciones" style="margin-top: 12px;">
+                                    @if (s.InscritoUsuarioActual)
+                                    {
+                                        <button class="btn-ghost-sm" @onclick="() => Desinscribirse(s)">Desinscribirme</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn-primary-sm" @onclick="() => Inscribirse(s)">Inscribirme</button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        }
+
+        @* ══════════════════════════════════════════
+           GESTIÓN DE MONITORÍAS (solo Monitor)
+           ══════════════════════════════════════════ *@
+        @if (tab == "gestion-monitorias" && esMonitor)
+        {
+            <div class="tab-content-area">
+                @if (!string.IsNullOrEmpty(mensajeGestion))
+                {
+                    <div class="@(errorGestion ? "alerta-error" : "alerta-exito")">@mensajeGestion</div>
+                }
+
+                @if (!mostrarFormularioSesion)
+                {
+                    <button class="btn-primary-sm" @onclick="AbrirFormularioNuevaSesion">
+                        <i class="bi bi-plus-circle"></i> Nueva sesión de monitoría
+                    </button>
+                }
+                else
+                {
+                    <div class="info-card form-card monitoria-card">
+                        <div class="info-card-head"><i class="bi bi-calendar-plus"></i><span>Nueva sesión</span></div>
+                        @if (!string.IsNullOrEmpty(errorFormularioSesion))
+                        {
+                            <div class="alerta-error"><i class="bi bi-exclamation-triangle"></i> @errorFormularioSesion</div>
+                        }
+                        <div class="campos-grid">
+                            <div class="campo-form"><label>Nombre</label><input @bind="formSesion.Nombre" placeholder="Nombre de la monitoría" /></div>
+                            <div class="campo-form"><label>Descripción</label><input @bind="formSesion.Descripcion" placeholder="Descripción" /></div>
+                            <div class="campo-form"><label>Jornada</label>
+                                <select @bind="formSesion.Jornada">
+                                    <option value="Mañana">Mañana</option>
+                                    <option value="Tarde">Tarde</option>
+                                </select>
+                            </div>
+                            <div class="campo-form"><label>Modalidad</label>
+                                <select @bind="formSesion.Modalidad">
+                                    <option value="Presencial">Presencial</option>
+                                    <option value="Virtual">Virtual</option>
+                                </select>
+                            </div>
+                            <div class="campo-form"><label>Hora inicio</label><input type="time" @bind="formSesion.HoraInicio" /></div>
+                            <div class="campo-form"><label>Hora fin</label><input type="time" @bind="formSesion.HoraFin" /></div>
+                            <div class="campo-form"><label>Fecha inicio</label><input type="date" @bind="formSesion.FechaInicio" /></div>
+                            <div class="campo-form"><label>Fecha fin (opcional)</label><input type="date" @bind="formSesion.FechaFin" /></div>
+                        </div>
+                        <div class="form-acciones" style="margin-top: 8px;">
+                            <button class="btn-primary-sm" disabled="@guardandoSesion" @onclick="GuardarSesion">@(guardandoSesion ? "Guardando..." : "Guardar")</button>
+                            <button class="btn-ghost-sm" @onclick="() => mostrarFormularioSesion = false">Cancelar</button>
+                        </div>
+                    </div>
+                }
+
+                <div class="info-card-head" style="margin-top: 20px;"><i class="bi bi-calendar-week"></i><span>Mis sesiones</span></div>
+                @if (!misSesiones.Any())
+                {
+                    <div class="empty-state">
+                        <div class="empty-icon"><i class="bi bi-calendar-x"></i></div>
+                        <h3>Sin sesiones creadas</h3>
+                        <p>Aún no has creado ninguna sesión de monitoría.</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var s in misSesiones)
+                    {
+                        <div class="info-card monitoria-card">
+                            <div class="info-card-head">
+                                <i class="bi bi-calendar-event"></i><span>@s.Nombre</span>
+                                <span class="comp-badge monitoria-badge @(s.Estado == "Activa" ? "badge-vista" : "badge-pend")">@s.Estado</span>
+                            </div>
+                            <div class="info-row"><span class="info-lbl">Detalle</span><span class="info-val">@s.Jornada · @s.Modalidad · @s.HoraInicio.ToString("HH:mm")–@s.HoraFin.ToString("HH:mm") · @s.TotalInscritos inscritos</span></div>
+
+                            <div class="form-acciones" style="margin-top: 10px;">
+                                @if (s.Estado == "Activa")
+                                {
+                                    <button class="btn-ghost-sm" @onclick="() => CancelarSesion(s)">Cancelar sesión</button>
+                                }
+                                <button class="btn-ghost-sm" @onclick="() => ToggleDetalleSesion(s.IdSesionMonitoria)">
+                                    @(sesionExpandida == s.IdSesionMonitoria ? "Ocultar detalle" : "Ver detalle")
+                                </button>
+                            </div>
+
+                            @if (sesionExpandida == s.IdSesionMonitoria)
+                            {
+                                <hr />
+                                <div class="tabs-monitorias-mini">
+                                    <button class="mtab-mini @(detalleSubTab == "inscritos" ? "mtab-mini-activo" : "")" @onclick='() => detalleSubTab = "inscritos"'>Inscritos (@inscritos.Count)</button>
+                                    <button class="mtab-mini @(detalleSubTab == "asistencia" ? "mtab-mini-activo" : "")" @onclick='() => detalleSubTab = "asistencia"'>Pasar asistencia</button>
+                                    <button class="mtab-mini @(detalleSubTab == "informe" ? "mtab-mini-activo" : "")" @onclick='() => detalleSubTab = "informe"'>Enviar informe</button>
+                                </div>
+
+                                @if (!inscritos.Any())
+                                {
+                                    <p class="monitoria-desc">Sin inscritos todavía. Cuando alguien se inscriba podrás pasar asistencia y enviar informes.</p>
+                                }
+                                else if (detalleSubTab == "inscritos")
+                                {
+                                    <table class="monitoria-tabla-mini">
+                                        <thead><tr><th>Aprendiz</th><th>Documento</th><th>Inscrito desde</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var i in inscritos)
+                                            {
+                                                <tr><td>@i.NombreAprendiz</td><td>@i.NumeroDocumento</td><td>@i.FechaInscripcion.ToString("dd/MM/yyyy")</td></tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                                else if (detalleSubTab == "asistencia")
+                                {
+                                    <div class="campos-grid">
+                                        <div class="campo-form"><label>Fecha</label><input type="date" @bind="fechaAsistencia" /></div>
+                                        <div class="campo-form"><label>Instructor destinatario</label>
+                                            <select @bind="idInstructorDestinatario">
+                                                <option value="0">Seleccione instructor</option>
+                                                @foreach (var ins in instructores)
+                                                {
+                                                    <option value="@ins.IdInstructor">@ins.Nombres</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <table class="monitoria-tabla-mini">
+                                        <thead><tr><th>Aprendiz</th><th>Asistencia</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var i in inscritos)
+                                            {
+                                                <tr>
+                                                    <td>@i.NombreAprendiz</td>
+                                                    <td>
+                                                        <select @bind="estadosAsistencia[i.IdAprendiz]">
+                                                            <option value="Presente">Presente</option>
+                                                            <option value="Justificado">Justificado</option>
+                                                            <option value="Ausente">Ausente</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                    <button class="btn-primary-sm" disabled="@guardandoSesion" @onclick="() => RegistrarAsistencia(s)">
+                                        Pasar asistencia al instructor
+                                    </button>
+                                }
+                                else if (detalleSubTab == "informe")
+                                {
+                                    <div class="campo-form" style="margin-bottom:8px;">
+                                        <label>Instructor destinatario</label>
+                                        <select @bind="idInstructorDestinatario">
+                                            <option value="0">Seleccione instructor</option>
+                                            @foreach (var ins in instructores)
+                                            {
+                                                <option value="@ins.IdInstructor">@ins.Nombres</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <p class="monitoria-desc">Aplica a todos los inscritos. Desmarca a quien no corresponda.</p>
+                                    <div class="mb-2">
+                                        @foreach (var i in inscritos)
+                                        {
+                                            <label style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:.8rem;">
+                                                <input type="checkbox" checked="@aprendicesInforme.Contains(i.IdAprendiz)"
+                                                       @onchange="e => ToggleAprendizInforme(i.IdAprendiz, e.Value)" />
+                                                @i.NombreAprendiz
+                                            </label>
+                                        }
+                                    </div>
+                                    <textarea class="form-control" rows="3" placeholder="Texto del informe..." @bind="textoInforme" style="width:100%;margin-bottom:8px;"></textarea>
+                                    <button class="btn-primary-sm" disabled="@guardandoSesion" @onclick="() => RegistrarInforme(s)">
+                                        Enviar informe al instructor
+                                    </button>
+                                }
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        }
+
+    </div>
+}
+
+@code {
+    string tab        = "datos";
+    bool cargando     = true;
+    PerfilAprendizDTO? perfil;
+
+    // Edición de datos propios — una sección activa a la vez, un DTO compartido
+    bool editandoPersonal, editandoContacto, editandoEmergencia;
+    bool guardandoEdicion;
+    string? errorEdicion;
+    ActualizarContactoDTO formEdicion = new();
+
+    bool cargandoAcudiente, editandoAcudiente, guardandoAcudiente;
+    string? errorAcudiente;
+    AcudienteDTO? acudiente;
+    GuardarAcudienteDTO formAcudiente = new();
+
+    bool cargandoObservaciones;
+    List<ObservacionAprendizDTO> observaciones = [];
+
+    bool cargandoCronograma;
+    CronogramaAprendizDTO? cronograma;
+    string vistaCrono  = "calendario";
+    string filtroComp  = "todas";
+    DateOnly semanaVista;
+
+    const int CAL_HORA_INICIO = 6;
+    const int CAL_HORA_FIN    = 22;
+    const int CAL_PIXEL_H     = 64;
+
+    string Iniciales => perfil is null ? "?"
+        : $"{perfil.Nombres.FirstOrDefault()}{perfil.Apellidos.FirstOrDefault()}".ToUpper();
+
+    int TotalCompetencias      => perfil?.Fichas.Sum(f => f.Competencias.Count) ?? 0;
+    int CompetenciasVista      => perfil?.Fichas.Sum(f => f.Competencias.Count(c => c.Estado == "Vista")) ?? 0;
+    int CompetenciasEnCurso    => perfil?.Fichas.Sum(f => f.Competencias.Count(c => c.Estado == "En Curso")) ?? 0;
+    int CompetenciasPendientes => TotalCompetencias - CompetenciasVista - CompetenciasEnCurso;
+    int ProgresoGeneral        => TotalCompetencias > 0
+        ? (int)Math.Round((double)CompetenciasVista / TotalCompetencias * 100)
+        : 0;
+
+    IEnumerable<SesionCronogramaDTO> SesionesFiltradas
+    {
+        get
+        {
+            var all = cronograma?.Sesiones ?? [];
+            var hoy = DateOnly.FromDateTime(DateTime.Today);
+            return vistaCrono switch
+            {
+                "proximas"  => all.Where(s => s.Fecha >= hoy),
+                "historial" => all.Where(s => s.Fecha < hoy),
+                _           => all
+            };
+        }
+    }
+
+    IEnumerable<DateOnly> DiasSemana =>
+        Enumerable.Range(0, 6).Select(i => semanaVista.AddDays(i));
+
+    bool HaySesionesEnSemana =>
+        DiasSemana.Any(d => SesionesDia(d).Any());
+
+    string SemanaLabel => semanaVista == default ? "" :
+        $"{semanaVista:dd MMM} – {semanaVista.AddDays(5):dd MMM yyyy}";
+
+    IEnumerable<SesionCronogramaDTO> SesionesDia(DateOnly d) =>
+        (cronograma?.Sesiones ?? []).Where(s => s.Fecha == d).OrderBy(s => s.HoraInicio);
+
+    protected override async Task OnInitializedAsync()
+    {
+        perfil   = await ProfileApi.ObtenerPerfilAsync(SesionService.IdUsuario);
+        cargando = false;
+
+        var estadoMonitor = await MonitoriaApi.ObtenerEstadoMonitorAsync(SesionService.IdUsuario);
+        esMonitor = estadoMonitor?.EsMonitor ?? false;
+        idAprendizActual = estadoMonitor?.IdAprendiz ?? 0;
+    }
+
+    void PrepararFormEdicion()
+    {
+        formEdicion = new ActualizarContactoDTO
+        {
+            Telefono                   = perfil!.Telefono,
+            Direccion                  = perfil.Direccion,
+            Municipio                  = perfil.Municipio,
+            FechaNacimiento            = perfil.FechaNacimiento,
+            Estrato                    = perfil.Estrato,
+            TipoPoblacion              = perfil.TipoPoblacion,
+            CondicionEspecial          = perfil.CondicionEspecial,
+            ContactoEmergenciaNombre   = perfil.ContactoEmergenciaNombre,
+            ContactoEmergenciaTelefono = perfil.ContactoEmergenciaTelefono
+        };
+        errorEdicion = null;
+    }
+
+    void IniciarEdicionPersonal()   { editandoPersonal = true;  editandoContacto = false; editandoEmergencia = false; PrepararFormEdicion(); }
+    void IniciarEdicionContacto()   { editandoContacto = true;  editandoPersonal = false; editandoEmergencia = false; PrepararFormEdicion(); }
+    void IniciarEdicionEmergencia() { editandoEmergencia = true; editandoPersonal = false; editandoContacto = false;  PrepararFormEdicion(); }
+
+    void CancelarEdicionPersonal()   { editandoPersonal   = false; errorEdicion = null; }
+    void CancelarEdicionContacto()   { editandoContacto   = false; errorEdicion = null; }
+    void CancelarEdicionEmergencia() { editandoEmergencia = false; errorEdicion = null; }
+
+    async Task GuardarPersonal()
+    {
+        guardandoEdicion = true; errorEdicion = null;
+        var ok = await ProfileApi.ActualizarContactoAsync(SesionService.IdUsuario, formEdicion);
+        if (ok)
+        {
+            perfil!.FechaNacimiento = formEdicion.FechaNacimiento;
+            perfil.Estrato          = formEdicion.Estrato;
+            perfil.TipoPoblacion    = formEdicion.TipoPoblacion;
+            perfil.CondicionEspecial= formEdicion.CondicionEspecial;
+            editandoPersonal        = false;
+        }
+        else errorEdicion = "No se pudo actualizar. Intenta de nuevo.";
+        guardandoEdicion = false;
+    }
+
+    async Task GuardarContacto()
+    {
+        guardandoEdicion = true; errorEdicion = null;
+        var ok = await ProfileApi.ActualizarContactoAsync(SesionService.IdUsuario, formEdicion);
+        if (ok)
+        {
+            perfil!.Telefono  = formEdicion.Telefono;
+            perfil.Direccion  = formEdicion.Direccion;
+            perfil.Municipio  = formEdicion.Municipio;
+            editandoContacto  = false;
+        }
+        else errorEdicion = "No se pudo actualizar. Intenta de nuevo.";
+        guardandoEdicion = false;
+    }
+
+    async Task GuardarEmergencia()
+    {
+        guardandoEdicion = true; errorEdicion = null;
+        var ok = await ProfileApi.ActualizarContactoAsync(SesionService.IdUsuario, formEdicion);
+        if (ok)
+        {
+            perfil!.ContactoEmergenciaNombre   = formEdicion.ContactoEmergenciaNombre;
+            perfil.ContactoEmergenciaTelefono  = formEdicion.ContactoEmergenciaTelefono;
+            editandoEmergencia                 = false;
+        }
+        else errorEdicion = "No se pudo actualizar. Intenta de nuevo.";
+        guardandoEdicion = false;
+    }
+
+    async Task CambiarTabAcudiente()
+    {
+        tab = "acudiente";
+        if (acudiente is null && !cargandoAcudiente && !editandoAcudiente && perfil is not null)
+        {
+            cargandoAcudiente = true;
+            acudiente = await InformeApi.ObtenerAcudienteAsync(perfil.IdAprendiz);
+            cargandoAcudiente = false;
+        }
+    }
+
+    async Task CambiarTabObservaciones()
+    {
+        tab = "observaciones";
+        if (observaciones.Count == 0 && !cargandoObservaciones && perfil is not null)
+        {
+            cargandoObservaciones = true;
+            observaciones = await InformeApi.ObtenerObservacionesAsync(perfil.IdAprendiz);
+            cargandoObservaciones = false;
+        }
+    }
+
+    void IniciarEdicionAcudiente()
+    {
+        formAcudiente = acudiente is null ? new() : new GuardarAcudienteDTO
+            { Nombre = acudiente.Nombre, Parentesco = acudiente.Parentesco, Correo = acudiente.Correo,
+              Telefono = acudiente.Telefono, Direccion = acudiente.Direccion };
+        errorAcudiente    = null;
+        editandoAcudiente = true;
+    }
+
+    void CancelarEdicionAcudiente() => editandoAcudiente = false;
+
+    async Task GuardarAcudiente()
+    {
+        if (string.IsNullOrWhiteSpace(formAcudiente.Nombre)     ||
+            string.IsNullOrWhiteSpace(formAcudiente.Parentesco) ||
+            string.IsNullOrWhiteSpace(formAcudiente.Telefono))
+        { errorAcudiente = "Nombre, parentesco y teléfono son obligatorios."; return; }
+
+        guardandoAcudiente = true;
+        var ok = await InformeApi.GuardarAcudienteAsync(perfil!.IdAprendiz, formAcudiente);
+        if (ok)
+        {
+            acudiente = await InformeApi.ObtenerAcudienteAsync(perfil.IdAprendiz);
+            editandoAcudiente = false; errorAcudiente = null;
+        }
+        else errorAcudiente = "No se pudo guardar. Intenta de nuevo.";
+        guardandoAcudiente = false;
+    }
+
+    async Task CambiarTabCronograma()
+    {
+        tab = "cronograma";
+        if (semanaVista == default)
+            semanaVista = LunesDe(DateOnly.FromDateTime(DateTime.Today));
+        if (cronograma is null && !cargandoCronograma)
+        {
+            cargandoCronograma = true;
+            cronograma = await ProfileApi.ObtenerCronogramaAsync(SesionService.IdUsuario);
+            cargandoCronograma = false;
+        }
+    }
+
+    DateOnly LunesDe(DateOnly d)
+    {
+        int dow = (int)d.DayOfWeek;
+        return d.AddDays(dow == 0 ? -6 : 1 - dow);
+    }
+
+    DateOnly? PrimeraClaseSemana => cronograma?.Sesiones.Count > 0
+        ? LunesDe(cronograma!.Sesiones.Min(s => s.Fecha))
+        : null;
+
+    void SemanaAnterior()   => semanaVista = semanaVista.AddDays(-7);
+    void SemanaSiguiente()  => semanaVista = semanaVista.AddDays(7);
+    void IrAHoy()           => semanaVista = LunesDe(DateOnly.FromDateTime(DateTime.Today));
+    void IrAPrimeraClase()  => semanaVista = PrimeraClaseSemana!.Value;
+
+    string ClaseBloqueCalendario(SesionCronogramaDTO s) => s.EstadoSesion?.ToLower() switch
+    {
+        "completado" => "cal-bl-fi",
+        "cancelada"  => "cal-bl-ca",
+        _            => "cal-bl-ab"
+    };
+
+    static string AcortarTexto(string t, int max) =>
+        t.Length > max ? t[..max] + "…" : t;
+
+    string ClaseEstado(string e) => e switch
+    {
+        "EN FORMACION"      => "badge-formacion",
+        "CANCELADO"         => "badge-cancelado",
+        "RETIRO VOLUNTARIO" => "badge-retiro",
+        "TRASLADADO"        => "badge-trasladado",
+        _                   => "badge-default"
+    };
+
+    string ClaseSesion(string e) => e.ToLower() switch
+    {
+        "abierta"    => "sesion-ab",
+        "finalizada" => "sesion-fi",
+        "cancelada"  => "sesion-ca",
+        _            => "sesion-df"
+    };
+
+    string ClaseComp(string e) => e switch
+    {
+        "Vista"    => "comp-vista",
+        "En Curso" => "comp-curso",
+        _          => "comp-pend"
+    };
+
+    string ClaseBadge(string e) => e switch
+    {
+        "Vista"    => "badge-vista",
+        "En Curso" => "badge-curso",
+        _          => "badge-pend"
+    };
+
+    HashSet<(string, string)> competenciasExpandidas = new();
+
+    void ToggleCompetenciaExpandida((string, string) clave)
+    {
+        if (!competenciasExpandidas.Add(clave))
+            competenciasExpandidas.Remove(clave);
+    }
+
+    string ClaseJuicio(string juicio) => juicio switch
+    {
+        "Aprobado" => "badge-vista",
+        "Por Evaluar" => "badge-curso",
+        _ => "badge-pend"
+    };
+
+    // ══════════════════════════════════════════
+    // MONITORÍAS
+    // ══════════════════════════════════════════
+    bool esMonitor;
+    int idAprendizActual;
+    bool cargandoMonitorias;
+    bool errorMonitoria;
+    string mensajeMonitoria = string.Empty;
+    List<SesionMonitoriaDTO> monitoriasVigentes = [];
+
+    async Task CambiarTabMonitorias()
+    {
+        tab = "monitorias";
+        if (!monitoriasVigentes.Any() && !cargandoMonitorias)
+        {
+            cargandoMonitorias = true;
+            monitoriasVigentes = await MonitoriaApi.ObtenerMonitoriasVigentesAsync(SesionService.IdUsuario);
+            cargandoMonitorias = false;
+        }
+    }
+
+    async Task Inscribirse(SesionMonitoriaDTO s)
+    {
+        var (ok, msg) = await MonitoriaApi.InscribirseAsync(new InscribirseMonitoriaCommand
+        {
+            IdSesionMonitoria = s.IdSesionMonitoria,
+            IdUsuario = SesionService.IdUsuario
+        });
+        errorMonitoria = !ok;
+        mensajeMonitoria = ok ? "Te inscribiste correctamente." : msg;
+        if (ok) monitoriasVigentes = await MonitoriaApi.ObtenerMonitoriasVigentesAsync(SesionService.IdUsuario);
+    }
+
+    async Task Desinscribirse(SesionMonitoriaDTO s)
+    {
+        if (s.IdInscripcionUsuarioActual is null) return;
+        var (ok, msg) = await MonitoriaApi.DesinscribirseAsync(s.IdInscripcionUsuarioActual.Value, SesionService.IdUsuario);
+        errorMonitoria = !ok;
+        mensajeMonitoria = ok ? "Te desinscribiste correctamente." : msg;
+        if (ok) monitoriasVigentes = await MonitoriaApi.ObtenerMonitoriasVigentesAsync(SesionService.IdUsuario);
+    }
+
+    // ── Gestión de Monitorías (solo Monitor) ──────────────────
+    bool cargandoGestion;
+    bool guardandoSesion;
+    bool errorGestion;
+    string mensajeGestion = string.Empty;
+    bool mostrarFormularioSesion;
+    string errorFormularioSesion = string.Empty;
+
+    List<SesionMonitoriaDTO> misSesiones = [];
+    List<InstructorListadoDTO> instructores = [];
+
+    int? sesionExpandida;
+    string detalleSubTab = "inscritos";
+    List<InscripcionMonitoriaDTO> inscritos = [];
+    DateOnly fechaAsistencia = DateOnly.FromDateTime(DateTime.Today);
+    int idInstructorDestinatario;
+    Dictionary<int, string> estadosAsistencia = new();
+    HashSet<int> aprendicesInforme = new();
+    string textoInforme = string.Empty;
+
+    CrearSesionMonitoriaCommand formSesion = new()
+    {
+        Jornada = "Mañana",
+        Modalidad = "Presencial",
+        FechaInicio = DateOnly.FromDateTime(DateTime.Today),
+        HoraInicio = new TimeOnly(8, 0),
+        HoraFin = new TimeOnly(10, 0)
+    };
+
+    async Task CambiarTabGestionMonitorias()
+    {
+        tab = "gestion-monitorias";
+        if (!cargandoGestion && instructores.Count == 0)
+        {
+            cargandoGestion = true;
+            instructores = (await InstructorApi.ObtenerInstructoresAsync()).Where(i => i.Activo).ToList();
+            misSesiones = await MonitoriaApi.ObtenerMisSesionesAsync(SesionService.IdUsuario);
+            cargandoGestion = false;
+        }
+    }
+
+    void AbrirFormularioNuevaSesion()
+    {
+        formSesion = new CrearSesionMonitoriaCommand
+        {
+            Jornada = "Mañana",
+            Modalidad = "Presencial",
+            FechaInicio = DateOnly.FromDateTime(DateTime.Today),
+            HoraInicio = new TimeOnly(8, 0),
+            HoraFin = new TimeOnly(10, 0)
+        };
+        errorFormularioSesion = string.Empty;
+        mostrarFormularioSesion = true;
+    }
+
+    async Task GuardarSesion()
+    {
+        if (formSesion.HoraInicio >= formSesion.HoraFin)
+        {
+            errorFormularioSesion = "La hora de inicio debe ser menor a la hora de fin.";
+            return;
+        }
+
+        formSesion.IdUsuario = SesionService.IdUsuario;
+
+        guardandoSesion = true;
+        var (ok, msg) = await MonitoriaApi.CrearSesionAsync(formSesion);
+        guardandoSesion = false;
+
+        if (!ok) { errorFormularioSesion = msg; return; }
+
+        mostrarFormularioSesion = false;
+        mensajeGestion = "Sesión creada correctamente.";
+        errorGestion = false;
+        misSesiones = await MonitoriaApi.ObtenerMisSesionesAsync(SesionService.IdUsuario);
+    }
+
+    async Task CancelarSesion(SesionMonitoriaDTO s)
+    {
+        var (ok, msg) = await MonitoriaApi.CancelarSesionAsync(s.IdSesionMonitoria, SesionService.IdUsuario);
+        errorGestion = !ok;
+        mensajeGestion = ok ? "Sesión cancelada." : msg;
+        if (ok) misSesiones = await MonitoriaApi.ObtenerMisSesionesAsync(SesionService.IdUsuario);
+    }
+
+    async Task ToggleDetalleSesion(int idSesion)
+    {
+        if (sesionExpandida == idSesion) { sesionExpandida = null; return; }
+
+        sesionExpandida = idSesion;
+        detalleSubTab = "inscritos";
+        inscritos = await MonitoriaApi.ObtenerInscritosAsync(idSesion);
+        estadosAsistencia = inscritos.ToDictionary(i => i.IdAprendiz, _ => "Presente");
+        aprendicesInforme = inscritos.Select(i => i.IdAprendiz).ToHashSet();
+        textoInforme = string.Empty;
+        idInstructorDestinatario = 0;
+        fechaAsistencia = DateOnly.FromDateTime(DateTime.Today);
+    }
+
+    void ToggleAprendizInforme(int idAprendiz, object? valorChecked)
+    {
+        var marcado = valorChecked is bool b && b;
+        if (marcado) aprendicesInforme.Add(idAprendiz);
+        else aprendicesInforme.Remove(idAprendiz);
+    }
+
+    async Task RegistrarAsistencia(SesionMonitoriaDTO s)
+    {
+        if (idInstructorDestinatario == 0)
+        {
+            errorGestion = true; mensajeGestion = "Selecciona el instructor destinatario.";
+            return;
+        }
+
+        guardandoSesion = true;
+        var (ok, msg) = await MonitoriaApi.RegistrarAsistenciaAsync(new RegistrarAsistenciaMonitoriaCommand
+        {
+            IdSesionMonitoria = s.IdSesionMonitoria,
+            IdUsuarioMonitor = SesionService.IdUsuario,
+            Fecha = fechaAsistencia,
+            IdInstructorDestinatario = idInstructorDestinatario,
+            Asistencias = estadosAsistencia.Select(kv => new AsistenciaMonitoriaItem
+            {
+                IdAprendiz = kv.Key,
+                Estado = kv.Value
+            }).ToList()
+        });
+        guardandoSesion = false;
+        errorGestion = !ok;
+        mensajeGestion = ok ? "Asistencia registrada y enviada al instructor." : msg;
+    }
+
+    async Task RegistrarInforme(SesionMonitoriaDTO s)
+    {
+        if (idInstructorDestinatario == 0)
+        {
+            errorGestion = true; mensajeGestion = "Selecciona el instructor destinatario.";
+            return;
+        }
+        if (aprendicesInforme.Count == 0)
+        {
+            errorGestion = true; mensajeGestion = "Selecciona al menos un aprendiz para el informe.";
+            return;
+        }
+
+        guardandoSesion = true;
+        var (ok, msg) = await MonitoriaApi.RegistrarInformeAsync(new RegistrarInformeMonitoriaCommand
+        {
+            IdSesionMonitoria = s.IdSesionMonitoria,
+            IdUsuarioMonitor = SesionService.IdUsuario,
+            IdInstructorDestinatario = idInstructorDestinatario,
+            Texto = textoInforme,
+            IdsAprendices = aprendicesInforme.ToList()
+        });
+        guardandoSesion = false;
+        errorGestion = !ok;
+        mensajeGestion = ok ? "Informe enviado al instructor." : msg;
+        if (ok) { textoInforme = string.Empty; aprendicesInforme.Clear(); }
+    }
+}

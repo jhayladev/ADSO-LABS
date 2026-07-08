@@ -1,0 +1,626 @@
+body {
+    background-color: #F4F6FB;
+}
+
+/* ── Encabezado ──────────────────────────────────────────────── */
+.instructor {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 2rem;
+}
+
+.instructor h1 {
+    font-size: 2rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    color: #1E293B;
+    margin-top: 2rem;
+    margin-bottom: .2rem;
+}
+
+.instructor h2 {
+    font-size: 0.9rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    color: #64748B;
+    margin-bottom: 0.25rem;
+}
+
+.instructor-subtitulo {
+    font-size: .9rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 400;
+    color: #94A3B8;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+/* ── Contenedor principal ────────────────────────────────────── */
+.contenedor-instructor {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: white;
+    box-shadow: 0 2px 20px rgba(59,130,246,.07);
+    border: 1px solid #F1F5F9;
+    border-radius: 20px;
+    padding: 1.5rem;
+    gap: 1.25rem;
+    margin-top: 0.75rem;
+    margin-bottom: 4rem;
+}
+
+.contenedor-instructor h3 {
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #1E293B;
+    margin: 0;
+}
+
+/* ── Filtros ─────────────────────────────────────────────────── */
+.filtro {
+    display: flex;
+    gap: 0.875rem;
+}
+
+.campo-select {
+    display: flex;
+    align-items: center;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    background: #F8FAFC;
+    width: 100%;
+    position: relative;
+}
+
+.campo-select label {
+    color: #94A3B8;
+    margin-right: 0.75rem;
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.campo-select ::deep select {
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 100%;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #1E293B;
+    appearance: none;
+}
+
+.campo-select::after {
+    content: "▼";
+    position: absolute;
+    right: 14px;
+    font-size: 0.6875rem;
+    color: #94A3B8;
+    pointer-events: none;
+}
+
+.filtros-busqueda {
+    display: flex;
+    gap: 0.875rem;
+}
+
+.campo-busqueda {
+    position: relative;
+    flex: 1;
+}
+
+.campo-busqueda input {
+    width: 100%;
+    padding: 10px 14px 10px 40px;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    background: #F8FAFC;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    color: #1E293B;
+    outline: none;
+}
+
+.campo-busqueda i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94A3B8;
+    font-size: 1rem;
+}
+
+.filtros-busqueda button {
+    padding: 0 1.5rem;
+    height: 42px;
+    border-radius: 10px;
+    border: none;
+    background: #4F46E5;
+    color: white;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.filtros-busqueda button:hover {
+    background: #4338CA;
+}
+
+/* ── KPIs ────────────────────────────────────────────────────── */
+.datos-instructores {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+}
+
+.data {
+    display: flex;
+    flex: 1;
+    height: 88px;
+    justify-content: space-between;
+    align-items: center;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+}
+
+.data h1 {
+    font-size: 0.8125rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    max-width: 110px;
+}
+
+.data h2 {
+    font-size: 2rem;
+    color: #3B82F6;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+}
+
+.activos h2 {
+    color: #3B82F6;
+}
+
+.riesgos h2 {
+    color: #EF4444;
+}
+
+/* ── Tabla de instructores ───────────────────────────────────── */
+.tabla-instructores {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #E2E8F0;
+    overflow: hidden;
+}
+
+.header-tabla {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.5fr) 120px;
+    background: #F8FAFC;
+    color: #64748B;
+    padding: 10px 20px;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #E2E8F0;
+    align-items: center;
+}
+
+.header-tabla .col-nombre    { justify-self: start; }
+.header-tabla .col-especialidad,
+.header-tabla .col-vinculacion { justify-self: start; }
+.header-tabla .col-estado    { justify-self: center; }
+
+.fila {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.5fr) 120px;
+    align-items: center;
+    padding: 10px 20px;
+    border-bottom: 1px solid #F1F5F9;
+    cursor: pointer;
+    transition: background .12s ease;
+    min-height: 56px;
+}
+
+.fila:last-child {
+    border-bottom: none;
+}
+
+.fila:hover {
+    background: #F8F7FF;
+}
+
+.fila-vacia {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    color: #94A3B8;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+/* ── Columna Nombre ──────────────────────────────────────────── */
+.nombre {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.avatar-mini {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4F46E5, #3B82F6);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: .5px;
+}
+
+.nombre-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.nombre-texto {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1E293B;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nombre-sub {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.6875rem;
+    color: #94A3B8;
+    font-weight: 400;
+}
+
+/* ── Columnas Especialidad / Vinculación ─────────────────────── */
+.celda-texto {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    color: #374151;
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── Columna Estado — switch ─────────────────────────────────── */
+.col-estado {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    justify-self: center;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: background .2s ease, box-shadow .2s ease;
+    flex-shrink: 0;
+}
+
+.toggle-switch:focus-visible {
+    outline: 2px solid #4F46E5;
+    outline-offset: 2px;
+}
+
+.toggle-on {
+    background: #4F46E5;
+    box-shadow: 0 2px 8px rgba(79,70,229,.35);
+}
+
+.toggle-off {
+    background: #CBD5E1;
+    box-shadow: none;
+}
+
+.toggle-thumb {
+    position: absolute;
+    top: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    transition: left .2s ease;
+}
+
+.toggle-on  .toggle-thumb { left: 23px; }
+.toggle-off .toggle-thumb { left: 3px; }
+
+.toggle-label {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+.col-estado:has(.toggle-on)  .toggle-label { color: #4F46E5; }
+.col-estado:has(.toggle-off) .toggle-label { color: #94A3B8; }
+
+/* ── Paginación ──────────────────────────────────────────────── */
+.paginacion {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.875rem 1.25rem;
+    border-top: 1px solid #F1F5F9;
+}
+
+.info-registros {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    color: #64748B;
+}
+
+.grupo-paginacion {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.btn-pag {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 8px;
+    background: #4F46E5;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.btn-pag:hover:not(:disabled) {
+    background: #4338CA;
+}
+
+.btn-pag:disabled {
+    background: #CBD5E1;
+    cursor: not-allowed;
+}
+
+.pagina-info {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+/* ── Botón agregar ───────────────────────────────────────────── */
+.btns-group {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.add-instructores {
+    padding: 0 1.5rem;
+    height: 42px;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    border-radius: 10px;
+    background: #4F46E5;
+    border: none;
+    color: white;
+    cursor: pointer;
+    transition: background .15s ease;
+}
+
+.add-instructores:hover {
+    background: #4338CA;
+}
+
+/* ── Modal overlay ───────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.40);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: overlay-in .18s ease;
+}
+
+@keyframes overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal-drawer {
+    background: white;
+    border-radius: 20px;
+    width: 420px;
+    max-width: 92vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,.18);
+    animation: drawer-in .20s ease;
+    overflow: hidden;
+}
+
+@keyframes drawer-in {
+    from { opacity: 0; transform: translateY(16px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem 1rem;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.modal-titulo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    color: #1E293B;
+}
+
+.modal-titulo i {
+    font-size: 1.25rem;
+    color: #4F46E5;
+}
+
+.btn-cerrar-modal {
+    background: none;
+    border: none;
+    font-size: 1rem;
+    color: #64748B;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background .15s ease, color .15s ease;
+}
+
+.btn-cerrar-modal:hover {
+    background: #F1F5F9;
+    color: #1E293B;
+}
+
+.modal-body {
+    padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.modal-body h4 {
+    font-size: 0.6875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 600;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.875rem;
+}
+
+.lista-competencias {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.lista-competencias li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.875rem;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    color: #1E293B;
+    background: #F0F4FF;
+    border-radius: 10px;
+    padding: 10px 14px;
+}
+
+.lista-competencias li i {
+    color: #4F46E5;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.sin-competencias {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #94A3B8;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.875rem;
+    padding: 0.75rem 0;
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+    .datos-instructores {
+        flex-wrap: wrap;
+    }
+
+    .data {
+        min-width: calc(50% - 0.5rem);
+    }
+
+    /* Ocultar columna Especialidad en pantallas medianas */
+    .header-tabla,
+    .fila {
+        grid-template-columns: 2fr 1.5fr 110px;
+    }
+
+    .col-especialidad {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .filtro,
+    .filtros-busqueda {
+        flex-direction: column;
+    }
+
+    .filtros-busqueda button {
+        width: 100%;
+    }
+
+    .campo-busqueda {
+        width: 100%;
+    }
+
+    /* Solo Nombre + Estado en móvil */
+    .header-tabla,
+    .fila {
+        grid-template-columns: 1fr 90px;
+    }
+
+    .col-especialidad,
+    .col-vinculacion {
+        display: none;
+    }
+
+    .nombre-sub {
+        display: none;
+    }
+}

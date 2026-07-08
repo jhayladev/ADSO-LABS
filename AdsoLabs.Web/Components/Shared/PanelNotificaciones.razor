@@ -1,0 +1,134 @@
+@using AdsoLabs.Application.DTOs.Notificacion
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NotificacionApiService NotifService
+@inject SesionService SesionService
+@inject IConfiguration Config
+@implements IAsyncDisposable
+
+<div class="notif-wrapper">
+    <button class="notif-btn" @onclick="TogglePanel" title="Notificaciones">
+        <i class="bi bi-bell-fill"></i>
+        @if (_noLeidas > 0)
+        {
+            <span class="notif-badge">@(_noLeidas > 99 ? "99+" : _noLeidas.ToString())</span>
+        }
+    </button>
+
+    @if (_panelAbierto)
+    {
+        <div class="notif-panel">
+            <div class="notif-header">
+                <span>Notificaciones</span>
+                @if (_noLeidas > 0)
+                {
+                    <button class="notif-marcar-todas" @onclick="MarcarTodasLeidasAsync">
+                        Marcar todas como leídas
+                    </button>
+                }
+            </div>
+
+            <div class="notif-lista">
+                @if (_notificaciones.Count == 0)
+                {
+                    <div class="notif-vacia">Sin notificaciones</div>
+                }
+                else
+                {
+                    @foreach (var n in _notificaciones)
+                    {
+                        <div class="notif-item @(n.Leida ? "" : "no-leida")"
+                             @onclick="() => MarcarLeidaAsync(n)">
+                            <div class="notif-item-titulo">@n.Titulo</div>
+                            <div class="notif-item-mensaje">@n.Mensaje</div>
+                            <div class="notif-item-fecha">@TiempoRelativo(n.FechaCreacion)</div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="notif-backdrop" @onclick="CerrarPanel"></div>
+    }
+</div>
+
+@code {
+    private List<NotificacionDTO> _notificaciones = [];
+    private int  _noLeidas;
+    private bool _panelAbierto;
+    private HubConnection? _hub;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarAsync();
+        await ConectarHubAsync();
+    }
+
+    private async Task CargarAsync()
+    {
+        _noLeidas        = await NotifService.ContarNoLeidasAsync(SesionService.IdUsuario);
+        _notificaciones  = await NotifService.ObtenerBandejaAsync(SesionService.IdUsuario) ?? [];
+    }
+
+    private async Task ConectarHubAsync()
+    {
+        var apiUrl = (Config["ApiUrl"] ?? "http://localhost:5295").TrimEnd('/');
+
+        _hub = new HubConnectionBuilder()
+            .WithUrl($"{apiUrl}/hubs/notificaciones")
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hub.On<NotificacionDTO>("RecibirNotificacion", async notif =>
+        {
+            _notificaciones.Insert(0, notif);
+            _noLeidas++;
+            await InvokeAsync(StateHasChanged);
+        });
+
+        try
+        {
+            await _hub.StartAsync();
+            await _hub.InvokeAsync("RegistrarConexion", SesionService.IdUsuario);
+        }
+        catch
+        {
+            // Hub no disponible: el componente funciona con carga inicial sin push
+        }
+    }
+
+    private void TogglePanel() => _panelAbierto = !_panelAbierto;
+    private void CerrarPanel()  => _panelAbierto = false;
+
+    private async Task MarcarLeidaAsync(NotificacionDTO n)
+    {
+        if (n.Leida) return;
+        await NotifService.MarcarLeidaAsync(n.IdNotificacion, SesionService.IdUsuario);
+        n.Leida = true;
+        _noLeidas = Math.Max(0, _noLeidas - 1);
+    }
+
+    private async Task MarcarTodasLeidasAsync()
+    {
+        await NotifService.MarcarTodasLeidasAsync(SesionService.IdUsuario);
+        foreach (var n in _notificaciones) n.Leida = true;
+        _noLeidas = 0;
+    }
+
+    private static string TiempoRelativo(DateTime fecha)
+    {
+        var diff = DateTime.Now - fecha;
+        return diff.TotalMinutes < 1  ? "Ahora mismo"
+             : diff.TotalHours   < 1  ? $"Hace {(int)diff.TotalMinutes} min"
+             : diff.TotalDays    < 1  ? $"Hace {(int)diff.TotalHours} h"
+             : diff.TotalDays    < 7  ? $"Hace {(int)diff.TotalDays} día(s)"
+             : fecha.ToString("dd/MM/yyyy");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hub is not null)
+            await _hub.DisposeAsync();
+    }
+}

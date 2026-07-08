@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>ADSO Labs</title>
+    <link rel="stylesheet" href="@Assets["lib/bootstrap/dist/css/bootstrap.min.css"]" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["AdsoLabs.Web.styles.css"]" />
+    <ImportMap />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <script src="_framework/blazor.web.js" autostart="false"></script>
+    <script>
+
+        Blazor.start({
+            circuit: {
+                reconnectionOptions: {
+                    maxRetries: 10,
+                    retryIntervalMilliseconds: 2000
+                }
+            }
+        });
+
+        // Descarga un array de bytes como archivo desde el navegador.
+        // Invocado desde Blazor (IJSRuntime) cuando el usuario solicita la plantilla de fichas.
+        // fileName: nombre del archivo visible al usuario
+        // bytes:    Uint8Array con el contenido binario
+        // mimeType: MIME type del archivo
+        window.downloadBytesAsFile = function (fileName, bytes, mimeType) {
+            const blob = new Blob([bytes], { type: mimeType });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+
+            window.importarArchivo = function (url, idUsuario, dotnetRef) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.xls,.xlsx';
+
+            input.addEventListener('change', async function () {
+                if (!input.files || input.files.length === 0) {
+                    dotnetRef.invokeMethodAsync('OnImportacionCancelada');
+                    return;
+                }
+                const form = new FormData();
+                form.append('archivo', input.files[0]);
+                form.append('idUsuario', idUsuario);
+                try {
+                    const res = await fetch(url, { method: 'POST', body: form });
+                    const json = await res.json();
+                    dotnetRef.invokeMethodAsync('OnImportacionCompletada', json);
+                } catch (e) {
+                    dotnetRef.invokeMethodAsync('OnImportacionCancelada');
+                }
+            });
+
+            input.addEventListener('cancel', function () {
+                dotnetRef.invokeMethodAsync('OnImportacionCancelada');
+            });
+
+            input.click();
+            // retorna inmediatamente sin await
+        }
+    </script>
+</body>
+
+</html>

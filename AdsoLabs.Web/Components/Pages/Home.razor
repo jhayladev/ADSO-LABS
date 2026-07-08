@@ -1,0 +1,470 @@
+@page "/home"
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@using AdsoLabs.Application.DTOs.Dashboard
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@inject SesionService SesionService
+@inject DashboardApiService DashboardApi
+@inject IJSRuntime JS
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="js/dashboard-charts.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<PageTitle>Inicio</PageTitle>
+
+@if (cargando)
+{
+    <div class="db-cargando">
+        <div class="spinner-border db-spinner" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        <p class="db-cargando-texto">Cargando dashboard...</p>
+    </div>
+}
+else
+{
+    <div class="db-root">
+        <h1 class="db-titulo">Inicio</h1>
+        <p class="db-subtitulo">Resumen de tu actividad, fichas asignadas y estado del programa.</p>
+
+        @if (errorCarga is not null)
+        {
+            <div class="alert alert-danger db-alert">
+                <i class="bi bi-exclamation-octagon-fill me-2"></i>@errorCarga
+            </div>
+        }
+        else if (resumen is null)
+        {
+            <div class="alert alert-warning db-alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                No se encontraron datos. Verifica que la sesión esté activa.
+            </div>
+        }
+        else
+        {
+            @* ══════════════════════════════════════════════════════
+               FILA KPI
+               ══════════════════════════════════════════════════════ *@
+            <div class="db-kpi-grid">
+
+                @* Tarjeta Perfil *@
+                <div class="db-card db-perfil-card">
+                    <div class="db-avatar">
+                        <i class="bi bi-person-fill"></i>
+                    </div>
+                    <div class="db-perfil-info">
+                        <h3 class="db-perfil-nombre">@resumen.Nombres</h3>
+                        <p class="db-perfil-cargo">@resumen.Rol</p>
+                        @if (resumen.UltimaActividad.HasValue)
+                        {
+                            <p class="db-perfil-actividad">
+                                <span class="db-dot-azul"></span>
+                                Ultima Actividad: @resumen.UltimaActividad.Value.ToString("dd - MMM - yyyy - HH:mm")
+                            </p>
+                        }
+                    </div>
+                </div>
+
+                @* Progreso General *@
+                <div class="db-card db-kpi-diagonal">
+                    <span class="db-kpi-label">Progreso<br>General</span>
+                    <span class="db-kpi-valor db-kpi-grande">@resumen.ProgresoPromedio<span class="db-kpi-unidad"> %</span></span>
+                </div>
+
+                @* Fichas Activas *@
+                <div class="db-card db-kpi-diagonal">
+                    <span class="db-kpi-label">Fichas<br>Activas</span>
+                    <span class="db-kpi-valor db-kpi-grande">@resumen.FichasActivas</span>
+                </div>
+
+                @* Horas + Instructores (apilados) *@
+                <div class="db-kpi-stack">
+                    <div class="db-card db-kpi-diagonal">
+                        <span class="db-kpi-label-sm">Horas</span>
+                        <span class="db-kpi-valor db-kpi-horas">
+                            @TotalHorasEjecutadas<span class="db-kpi-sep">/@resumen.TotalHorasPlaneadas</span>
+                        </span>
+                    </div>
+                    <div class="db-card db-kpi-diagonal">
+                        <span class="db-kpi-label-sm">Instructores<br>Técnicos</span>
+                        <span class="db-kpi-valor db-kpi-grande">@resumen.InstructoresTecnicos</span>
+                    </div>
+                </div>
+            </div>
+
+            @* ══════════════════════════════════════════════════════
+               CONTENIDO PRINCIPAL (dos columnas)
+               ══════════════════════════════════════════════════════ *@
+            <div class="db-main-grid">
+
+                @* ── COLUMNA IZQUIERDA ── *@
+                <div class="db-col-izq">
+
+                    @* Estado de Competencias *@
+                    <div class="db-card db-competencias-card">
+                        <div class="db-card-header">
+                            <div>
+                                <h6 class="db-card-titulo">Estado de Competencias</h6>
+                                <p class="db-card-subtitulo">Resumen académico estructural</p>
+                            </div>
+                            <i class="bi bi-pie-chart-fill db-card-icon"></i>
+                        </div>
+
+                        <div class="db-competencias-body">
+                            @* Mini estadísticas 2×2 *@
+                            <div class="db-mini-stats">
+                                <div class="db-mini-stat">
+                                    <span class="db-mini-val">@(estadoCompetencias?.Total ?? 0)</span>
+                                    <span class="db-mini-lbl">Total Asignadas</span>
+                                </div>
+                                <div class="db-mini-stat">
+                                    <span class="db-mini-val">@(estadoCompetencias?.Finalizadas ?? 0)</span>
+                                    <span class="db-mini-lbl">Finalizadas</span>
+                                </div>
+                                <div class="db-mini-stat">
+                                    <span class="db-mini-val">@(estadoCompetencias?.EnEjecucion ?? 0)</span>
+                                    <span class="db-mini-lbl">En Ejecución</span>
+                                </div>
+                                <div class="db-mini-stat">
+                                    <span class="db-mini-val">@(estadoCompetencias?.ProximasACerrar ?? 0)</span>
+                                    <span class="db-mini-lbl">Próx. a cerrar</span>
+                                </div>
+                            </div>
+
+                            @* Donut + leyenda vertical *@
+                            <div class="db-donut-area">
+                                @if (estadoCompetencias is not null && estadoCompetencias.Total > 0)
+                                {
+                                    <div class="db-donut-canvas">
+                                        <canvas id="donutCompetencias"></canvas>
+                                    </div>
+                                    <div class="db-leyenda-vertical">
+                                        <span class="db-leyenda-capsula" style="background:#4F46E5">
+                                            @estadoCompetencias.EnEjecucion
+                                        </span>
+                                        <span class="db-leyenda-capsula" style="background:#3B82F6">
+                                            @estadoCompetencias.Finalizadas
+                                        </span>
+                                        <span class="db-leyenda-capsula" style="background:#EF4444">
+                                            @estadoCompetencias.ProximasACerrar
+                                        </span>
+                                        <span class="db-leyenda-capsula db-leyenda-capsula-clara" style="background:#CBD5E1">
+                                            @estadoCompetencias.Pendientes
+                                        </span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="db-vacio">Sin competencias registradas.</p>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    @* Progreso por Fichas *@
+                    <div class="db-card">
+                        <div class="db-card-header">
+                            <div>
+                                <h6 class="db-card-titulo">Progreso por fichas</h6>
+                            </div>
+                            <i class="bi bi-graph-up db-card-icon"></i>
+                        </div>
+                        @if (progresoFichas.Count > 0)
+                        {
+                            <div class="db-pilares-wrap">
+                                @foreach (var f in progresoFichas)
+                                {
+                                    var pct      = f.HorasPlaneadas > 0
+                                        ? (int)Math.Min(100, Math.Round((double)f.HorasEjecutadas / f.HorasPlaneadas * 100))
+                                        : 0;
+                                    var gradient = GetProgressGradient(pct);
+
+                                    <div class="db-pilar-grupo">
+                                        <span class="db-pilar-pct" style="color:#94A3B8">@pct%</span>
+                                        <div class="db-pilar-track">
+                                            <div class="db-pilar-fill"
+                                                 style="height:@(pct)%; background:@gradient"></div>
+                                        </div>
+                                        <span class="db-pilar-label">F-@f.NumeroFicha</span>
+                                    </div>
+                                }
+                            </div>
+                            <hr class="db-pilares-sep" />
+                            <div class="db-pilares-leyenda">
+                                <div class="db-ley-par">
+                                    <span class="db-ley-sq-pill db-ley-gris"></span>
+                                    <span class="db-ley-txt">Horas Planeadas</span>
+                                </div>
+                                <div class="db-ley-par">
+                                    <span class="db-ley-sq-pill db-ley-grad"></span>
+                                    <span class="db-ley-txt">Horas Ejecutadas</span>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="db-vacio">Sin fichas activas para mostrar.</p>
+                        }
+                    </div>
+                </div>
+
+                @* ── COLUMNA DERECHA ── *@
+                <div class="db-col-der">
+
+                    @* Alertas y Seguimiento *@
+                    <div class="db-card">
+                        <div class="db-card-header">
+                            <div>
+                                <h6 class="db-card-titulo">Alerta y Seguimiento</h6>
+                                <p class="db-card-subtitulo">Monitoreo en tiempo real</p>
+                            </div>
+                            <i class="bi bi-clock-history db-card-icon"></i>
+                        </div>
+
+                        @if (alertas is not null)
+                        {
+                            <div class="db-alerta-lista">
+                                <div class="db-alerta-item">
+                                    <span class="db-alerta-dot"></span>
+                                    <div class="db-alerta-texto">
+                                        <span class="db-alerta-titulo">Fichas con baja asistencia</span>
+                                        <span class="db-alerta-desc">Menos del 70% de asistencias registradas</span>
+                                    </div>
+                                    <span class="db-alerta-num">@alertas.BajaAsistencia.Count</span>
+                                </div>
+                                <div class="db-alerta-item">
+                                    <span class="db-alerta-dot"></span>
+                                    <div class="db-alerta-texto">
+                                        <span class="db-alerta-titulo">Fichas con retraso en horas</span>
+                                        <span class="db-alerta-desc">Horas ejecutadas por debajo del plan</span>
+                                    </div>
+                                    <span class="db-alerta-num">@alertas.RetrasoHoras.Count</span>
+                                </div>
+                                <div class="db-alerta-item">
+                                    <span class="db-alerta-dot db-alerta-dot-ok"></span>
+                                    <div class="db-alerta-texto">
+                                        <span class="db-alerta-titulo">Fichas al día</span>
+                                        <span class="db-alerta-desc">Asistencias y horas dentro de los estándares</span>
+                                    </div>
+                                    <span class="db-alerta-num">@alertas.AlDia.Count</span>
+                                </div>
+                                <div class="db-alerta-item">
+                                    <span class="db-alerta-dot db-alerta-dot-warn"></span>
+                                    <div class="db-alerta-texto">
+                                        <span class="db-alerta-titulo">Competencias que culminan esta semana</span>
+                                        <span class="db-alerta-desc">Requieren acta de cierre y evaluación final</span>
+                                    </div>
+                                    <span class="db-alerta-num">@alertas.CulminanEstaSemana.Count</span>
+                                </div>
+                            </div>
+                        }
+
+                        @* Estado General de Fichas — dentro de la misma tarjeta *@
+                        <hr class="db-separador" />
+                        <h6 class="db-card-titulo mb-3">Estado General de Fichas</h6>
+
+                        @{
+                            int maxVal = Math.Max(1, Math.Max(CriticoCount, Math.Max(RiesgoCount, ExcelenciaCount)));
+                        }
+
+                        <div class="db-estado-lista">
+                            <div class="db-estado-item">
+                                <span class="db-estado-label">Crítico</span>
+                                <div class="db-estado-track">
+                                    <div class="db-estado-fill db-fill-critico"
+                                         style="width:@(CriticoCount * 100 / maxVal)%"></div>
+                                </div>
+                                <span class="db-estado-num">@CriticoCount</span>
+                            </div>
+                            <div class="db-estado-item">
+                                <span class="db-estado-label">Riesgo</span>
+                                <div class="db-estado-track">
+                                    <div class="db-estado-fill db-fill-riesgo"
+                                         style="width:@(RiesgoCount * 100 / maxVal)%"></div>
+                                </div>
+                                <span class="db-estado-num">@RiesgoCount</span>
+                            </div>
+                            <div class="db-estado-item">
+                                <span class="db-estado-label">Excelencia</span>
+                                <div class="db-estado-track">
+                                    <div class="db-estado-fill db-fill-excelencia"
+                                         style="width:@(ExcelenciaCount * 100 / maxVal)%"></div>
+                                </div>
+                                <span class="db-estado-num">@ExcelenciaCount</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* ══════════════════════════════════════════════════════
+           ACCESOS RÁPIDOS
+           ══════════════════════════════════════════════════════ *@
+        <h2 class="db-accesos-titulo">Accesos Rápidos</h2>
+        <div class="db-accesos-grid">
+            @if (SesionService.EsAdministrador)
+            {
+                <a class="db-acceso" href="/repositorio">
+                    <div class="db-acceso-icon"><i class="bi bi-folder2-open"></i></div>
+                    <div class="db-acceso-body">
+                        <h5 class="db-acceso-nombre">Repositorio</h5>
+                        <p class="db-acceso-desc">Gestión documental</p>
+                    </div>
+                    <i class="bi bi-chevron-right db-acceso-chevron"></i>
+                </a>
+                <a class="db-acceso" href="/aprendiz">
+                    <div class="db-acceso-icon"><i class="bi bi-mortarboard-fill"></i></div>
+                    <div class="db-acceso-body">
+                        <h5 class="db-acceso-nombre">Aprendices</h5>
+                        <p class="db-acceso-desc">Gestión y seguimiento</p>
+                    </div>
+                    <i class="bi bi-chevron-right db-acceso-chevron"></i>
+                </a>
+                <a class="db-acceso" href="/instructor">
+                    <div class="db-acceso-icon"><i class="bi bi-person-vcard-fill"></i></div>
+                    <div class="db-acceso-body">
+                        <h5 class="db-acceso-nombre">Instructores</h5>
+                        <p class="db-acceso-desc">Gestión del equipo docente</p>
+                    </div>
+                    <i class="bi bi-chevron-right db-acceso-chevron"></i>
+                </a>
+                <a class="db-acceso" href="/reportes">
+                    <div class="db-acceso-icon"><i class="bi bi-bar-chart-line-fill"></i></div>
+                    <div class="db-acceso-body">
+                        <h5 class="db-acceso-nombre">Reportes</h5>
+                        <p class="db-acceso-desc">Análisis y exportación</p>
+                    </div>
+                    <i class="bi bi-chevron-right db-acceso-chevron"></i>
+                </a>
+            }
+            else
+            {
+                <a class="db-acceso" href="/asistencias">
+                    <div class="db-acceso-icon"><i class="bi bi-calendar2-check-fill"></i></div>
+                    <div class="db-acceso-body">
+                        <h5 class="db-acceso-nombre">Asistencias</h5>
+                        <p class="db-acceso-desc">Registro y control de sesiones</p>
+                    </div>
+                    <i class="bi bi-chevron-right db-acceso-chevron"></i>
+                </a>
+                <a class="db-acceso" href="/reportes">
+                    <div class="db-acceso-icon"><i class="bi bi-bar-chart-line-fill"></i></div>
+                    <div class="db-acceso-body">
+                        <h5 class="db-acceso-nombre">Reportes Académicos</h5>
+                        <p class="db-acceso-desc">Progreso y juicios de tus fichas</p>
+                    </div>
+                    <i class="bi bi-chevron-right db-acceso-chevron"></i>
+                </a>
+                <a class="db-acceso" href="/guias">
+                    <div class="db-acceso-icon"><i class="bi bi-journal-arrow-down"></i></div>
+                    <div class="db-acceso-body">
+                        <h5 class="db-acceso-nombre">Guías y Planeación</h5>
+                        <p class="db-acceso-desc">Repositorio pedagógico</p>
+                    </div>
+                    <i class="bi bi-chevron-right db-acceso-chevron"></i>
+                </a>
+            }
+        </div>
+
+    </div>
+}
+
+@code {
+    bool cargando = true;
+    bool graficosRenderizados = false;
+    string? errorCarga;
+
+    ResumenDashboardDTO? resumen;
+    EstadoCompetenciasDashboardDTO? estadoCompetencias;
+    List<ProgresoFichaDashboardDTO> progresoFichas = [];
+    AlertasDashboardDTO? alertas;
+
+    int TotalHorasEjecutadas => progresoFichas.Sum(f => f.HorasEjecutadas);
+
+    private static string GetProgressColor(int pct) => pct switch
+    {
+        >= 80 => "#10B981",
+        >= 50 => "#3B82F6",
+        >= 30 => "#F59E0B",
+        _     => "#EF4444"
+    };
+
+    private static string GetProgressGradient(int pct) =>
+        "linear-gradient(to bottom, #DE422A 0%, #792417 100%)";
+    int CriticoCount    => resumen?.Fichas.Count(f => f.ClasificacionEstado == "Crítico")    ?? 0;
+    int RiesgoCount     => resumen?.Fichas.Count(f => f.ClasificacionEstado == "Riesgo")     ?? 0;
+    int ExcelenciaCount => resumen?.Fichas.Count(f => f.ClasificacionEstado == "Excelencia") ?? 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Task.WhenAll(
+                CargarResumenAsync(),
+                CargarCompetenciasAsync(),
+                CargarProgresoAsync(),
+                CargarAlertasAsync()
+            );
+        }
+        catch (Exception ex)
+        {
+            errorCarga = $"Error al cargar el dashboard: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+    private async Task CargarResumenAsync()
+    {
+        try { resumen = await DashboardApi.ObtenerResumenAsync(SesionService.IdUsuario); }
+        catch (Exception ex) { errorCarga = ex.Message; }
+    }
+
+    private async Task CargarCompetenciasAsync()
+    {
+        try { estadoCompetencias = await DashboardApi.ObtenerEstadoCompetenciasAsync(SesionService.IdUsuario); }
+        catch { }
+    }
+
+    private async Task CargarProgresoAsync()
+    {
+        try { progresoFichas = await DashboardApi.ObtenerProgresoFichasAsync(SesionService.IdUsuario); }
+        catch { }
+    }
+
+    private async Task CargarAlertasAsync()
+    {
+        try { alertas = await DashboardApi.ObtenerAlertasAsync(SesionService.IdUsuario); }
+        catch { }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!cargando && !graficosRenderizados && resumen is not null)
+        {
+            graficosRenderizados = true;
+            await RenderizarGraficosAsync();
+        }
+    }
+
+    private async Task RenderizarGraficosAsync()
+    {
+        if (estadoCompetencias is not null && estadoCompetencias.Total > 0)
+        {
+            await JS.InvokeVoidAsync("renderDonutChart",
+                "donutCompetencias",
+                new[] { "En ejecución", "Finalizadas", "Próx. a cerrar", "Pendientes" },
+                new[] { estadoCompetencias.EnEjecucion, estadoCompetencias.Finalizadas,
+                        estadoCompetencias.ProximasACerrar, estadoCompetencias.Pendientes },
+                new[] { "#4F46E5", "#3B82F6", "#EF4444", "#CBD5E1" }
+            );
+        }
+
+        // El gráfico de barras es HTML/CSS puro — no requiere Chart.js.
+    }
+}

@@ -1,0 +1,302 @@
+@page "/asistencias/registro/{IdFichaCompetenciaResultado:int}/{IdSesion:int}"
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@inject AsistenciaApiService asistenciaApi
+@inject NavigationManager    nav
+@using AdsoLabs.Application.DTOs.Asistencia
+
+<section class="registro-page">
+
+    <!-- Encabezado -->
+    <div class="page-header">
+        <button class="btn-volver" @onclick="Volver">
+            <i class="bi bi-arrow-left"></i> Volver
+        </button>
+        <div class="header-info">
+            <h1>Registro de asistencia</h1>
+            @if (sesionInfo is not null)
+            {
+                <p>
+                    <span class="tag-fecha">
+                        <i class="bi bi-calendar3"></i>
+                        @sesionInfo.Fecha.ToString("dddd dd 'de' MMMM yyyy",
+                            new System.Globalization.CultureInfo("es-CO"))
+                    </span>
+                    <span class="tag-hora">
+                        <i class="bi bi-clock"></i>
+                        @sesionInfo.HoraInicio.ToString("hh\\:mm") – @sesionInfo.HoraFin.ToString("hh\\:mm")
+                    </span>
+                    <span class="badge-estado @GetClaseEstado(sesionInfo.Estado)">
+                        <i class="bi @GetIconoEstado(sesionInfo.Estado)"></i>
+                        @sesionInfo.Estado
+                    </span>
+                </p>
+            }
+        </div>
+
+        @if (aprendices.Count > 0 && !guardando && !guardadoExitoso)
+        {
+            <button class="btn-guardar-header" @onclick="Guardar">
+                <i class="bi bi-check-lg"></i> Guardar asistencia
+            </button>
+        }
+    </div>
+
+    <!-- Cuerpo -->
+    @if (cargando)
+    {
+        <div class="estado-vacio">
+            <div class="spinner"></div>
+            <p>Cargando aprendices...</p>
+        </div>
+    }
+    else if (sesionInfo?.Estado == "Cancelada")
+    {
+        <div class="estado-vacio">
+            <i class="bi bi-slash-circle"></i>
+            <p>Esta sesión fue cancelada. No es posible registrar asistencia.</p>
+        </div>
+    }
+    else if (aprendices.Count == 0)
+    {
+        <div class="estado-vacio">
+            <i class="bi bi-people"></i>
+            <p>No hay aprendices en formación para esta sesión.</p>
+        </div>
+    }
+    else
+    {
+        <!-- Herramientas: resumen + asignación masiva -->
+        <div class="barra-herramientas">
+            <div class="resumen-asistencia">
+                <span class="chip chip-presente">
+                    <i class="bi bi-check-circle-fill"></i>
+                    @ContarEstado("Presente") presentes
+                </span>
+                <span class="chip chip-tarde">
+                    <i class="bi bi-clock-fill"></i>
+                    @ContarEstado("Tarde") tarde
+                </span>
+                <span class="chip chip-ausente">
+                    <i class="bi bi-x-circle-fill"></i>
+                    @ContarEstado("Ausente") ausentes
+                </span>
+                <span class="chip chip-justificado">
+                    <i class="bi bi-shield-check"></i>
+                    @ContarEstado("Justificado") justificados
+                </span>
+            </div>
+            <div class="acciones-masivas">
+                <span class="label-masivo">Marcar todos:</span>
+                <button class="btn-masa btn-masa-presente" @onclick='() => MarcarTodos("Presente")'>Presente</button>
+                <button class="btn-masa btn-masa-ausente"  @onclick='() => MarcarTodos("Ausente")'>Ausente</button>
+            </div>
+        </div>
+
+        <!-- Tabla de aprendices -->
+        <div class="tabla-registro">
+            <div class="tabla-head">
+                <span>Aprendiz</span>
+                <span>Documento</span>
+                <span>Estado</span>
+                <span>Motivo de justificación</span>
+            </div>
+
+            @foreach (var a in aprendices)
+            {
+                <div class="tabla-fila @GetClaseFilaAprendiz(a.Estado)">
+                    <span class="col-nombre">
+                        <i class="bi bi-person-circle"></i>
+                        @a.NombreCompleto
+                    </span>
+                    <span class="col-doc">@a.NumeroDocumento</span>
+                    <span class="col-estado">
+                        <div class="selector-estado">
+                            <button class="opcion-estado @(a.Estado == "Presente"    ? "activo-presente"    : "")"
+                                    @onclick='() => SetEstado(a, "Presente")'>
+                                <i class="bi bi-check-circle-fill"></i> Presente
+                            </button>
+                            <button class="opcion-estado @(a.Estado == "Tarde"       ? "activo-tarde"       : "")"
+                                    @onclick='() => SetEstado(a, "Tarde")'>
+                                <i class="bi bi-clock-fill"></i> Tarde
+                            </button>
+                            <button class="opcion-estado @(a.Estado == "Ausente"     ? "activo-ausente"     : "")"
+                                    @onclick='() => SetEstado(a, "Ausente")'>
+                                <i class="bi bi-x-circle-fill"></i> Ausente
+                            </button>
+                            <button class="opcion-estado @(a.Estado == "Justificado" ? "activo-justificado" : "")"
+                                    @onclick='() => SetEstado(a, "Justificado")'>
+                                <i class="bi bi-shield-check"></i> Justificado
+                            </button>
+                        </div>
+                    </span>
+                    <span class="col-motivo">
+                        @if (a.Estado == "Justificado")
+                        {
+                            <input type="text"
+                                   placeholder="Motivo de inasistencia (opcional)"
+                                   value="@a.MotivoInasistencia"
+                                   @oninput="e => a.MotivoInasistencia = e.Value?.ToString()" />
+                        }
+                    </span>
+                </div>
+            }
+        </div>
+
+        <!-- Alerta de resultado -->
+        @if (!string.IsNullOrEmpty(mensajeGuardado))
+        {
+            <div class="alerta @(guardadoExitoso ? "alerta-ok" : "alerta-error")">
+                <i class="bi @(guardadoExitoso ? "bi-check-circle" : "bi-exclamation-circle")"></i>
+                @mensajeGuardado
+            </div>
+        }
+
+        <!-- Botón guardar inferior -->
+        <div class="pie-acciones">
+            <button class="btn-cancelar" @onclick="Volver">Cancelar</button>
+            <button class="btn-guardar" @onclick="Guardar" disabled="@(guardando || guardadoExitoso)">
+                @if (guardando)
+                {
+                    <span class="spinner-sm"></span>
+                    <span>Guardando...</span>
+                }
+                else if (guardadoExitoso)
+                {
+                    <i class="bi bi-check-lg"></i>
+                    <span>Guardado</span>
+                }
+                else
+                {
+                    <i class="bi bi-check-lg"></i>
+                    <span>Guardar asistencia</span>
+                }
+            </button>
+        </div>
+    }
+
+</section>
+
+@code {
+    [Parameter] public int IdFichaCompetenciaResultado { get; set; }
+    [Parameter] public int IdSesion                    { get; set; }
+
+    // ViewModel local: estado + motivo enlazados a la UI
+    class AprendizVm
+    {
+        public int    IdAprendiz          { get; set; }
+        public string NombreCompleto      { get; set; } = "";
+        public string NumeroDocumento     { get; set; } = "";
+        public string? Estado             { get; set; }
+        public string? MotivoInasistencia { get; set; }
+    }
+
+    SesionDTO?       sesionInfo      = null;
+    List<AprendizVm> aprendices      = [];
+    bool             cargando        = true;
+    bool             guardando       = false;
+    bool             guardadoExitoso = false;
+    string           mensajeGuardado = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        cargando        = true;
+        guardadoExitoso = false;
+        mensajeGuardado = "";
+
+        var (infoTask, aprendizTask) = (
+            asistenciaApi.ObtenerInfoSesionAsync(IdSesion),
+            asistenciaApi.ObtenerAprendicesSesionAsync(IdSesion)
+        );
+
+        sesionInfo = await infoTask;
+        var dtoList = await aprendizTask;
+
+        aprendices = dtoList.Select(d => new AprendizVm
+        {
+            IdAprendiz          = d.IdAprendiz,
+            NombreCompleto      = d.NombreCompleto,
+            NumeroDocumento     = d.NumeroDocumento,
+            Estado              = d.Estado ?? "Presente",  // default: Presente
+            MotivoInasistencia  = d.MotivoInasistencia
+        }).ToList();
+
+        cargando = false;
+    }
+
+    void SetEstado(AprendizVm a, string estado)
+    {
+        a.Estado = estado;
+        if (estado is "Presente" or "Tarde")
+            a.MotivoInasistencia = null;
+    }
+
+    void MarcarTodos(string estado)
+    {
+        foreach (var a in aprendices)
+        {
+            a.Estado = estado;
+            if (estado is "Presente" or "Tarde")
+                a.MotivoInasistencia = null;
+        }
+    }
+
+    int ContarEstado(string estado)
+        => aprendices.Count(a => a.Estado == estado);
+
+    async Task Guardar()
+    {
+        guardando       = true;
+        mensajeGuardado = "";
+
+        var dto = new GuardarAsistenciaDTO
+        {
+            IdSesion = IdSesion,
+            Items = aprendices.Select(a => new ItemAsistenciaDTO
+            {
+                IdAprendiz         = a.IdAprendiz,
+                Estado             = a.Estado ?? "Presente",
+                MotivoInasistencia = a.MotivoInasistencia
+            }).ToList()
+        };
+
+        var resp = await asistenciaApi.GuardarAsistenciaAsync(dto);
+        guardando       = false;
+        guardadoExitoso = resp.esExitoso;
+        mensajeGuardado = resp.Mensaje;
+
+        if (resp.esExitoso)
+        {
+            // Recargar estado de sesión para reflejar que quedó Finalizada
+            sesionInfo = await asistenciaApi.ObtenerInfoSesionAsync(IdSesion);
+        }
+    }
+
+    void Volver()
+        => nav.NavigateTo($"/asistencias/sesiones/{IdFichaCompetenciaResultado}");
+
+    string GetClaseEstado(string estado) => estado switch
+    {
+        "Abierta"    => "badge-abierta",
+        "Finalizada" => "badge-finalizada",
+        "Cancelada"  => "badge-cancelada",
+        _            => ""
+    };
+
+    string GetIconoEstado(string estado) => estado switch
+    {
+        "Abierta"    => "bi-circle-fill",
+        "Finalizada" => "bi-check-circle-fill",
+        "Cancelada"  => "bi-x-circle-fill",
+        _            => "bi-dash-circle"
+    };
+
+    string GetClaseFilaAprendiz(string? estado) => estado switch
+    {
+        "Presente"    => "fila-presente",
+        "Tarde"       => "fila-tarde",
+        "Ausente"     => "fila-ausente",
+        "Justificado" => "fila-justificado",
+        _             => ""
+    };
+}

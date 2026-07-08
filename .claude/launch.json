@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "AdsoLabs.API",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "AdsoLabs.API", "--launch-profile", "https"],
+      "port": 7221
+    },
+    {
+      "name": "AdsoLabs.Web",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "AdsoLabs.Web", "--launch-profile", "http"],
+      "port": 5285
+    }
+  ]
+}

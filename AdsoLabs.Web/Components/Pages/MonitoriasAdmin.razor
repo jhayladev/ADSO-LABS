@@ -1,0 +1,298 @@
+@page "/monitorias-admin"
+@attribute [Authorize(Roles = "Administrador,Instructor")]
+@rendermode InteractiveServer
+@using AdsoLabs.Application.DTOs.Aprendiz
+@using AdsoLabs.Application.DTOs.Monitoria
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@inject MonitoriaApiService MonitoriaApi
+@inject AprendizApiService AprendizApi
+@inject SesionService SesionService
+
+<section class="monitorias">
+
+    <h1>Monitorías</h1>
+    <p class="monitorias-subtitulo">Seguimiento de monitorías, monitores y reportes dirigidos a instructores.</p>
+
+    @if (!string.IsNullOrEmpty(mensaje))
+    {
+        <div class="alert @(esError ? "alert-danger" : "alert-success")">@mensaje</div>
+    }
+
+    <div class="contenedor-monitorias">
+
+        <div class="tabs-monitorias">
+            <button class="mtab @(tab == "sesiones" ? "mtab-activo" : "")" @onclick='() => tab = "sesiones"'>Monitorías vigentes</button>
+            <button class="mtab @(tab == "asistencias" ? "mtab-activo" : "")" @onclick="AbrirAsistencias">Asistencias recibidas</button>
+            <button class="mtab @(tab == "informes" ? "mtab-activo" : "")" @onclick="AbrirInformes">Informes recibidos</button>
+            <button class="mtab @(tab == "monitores" ? "mtab-activo" : "")" @onclick="AbrirMonitores">Monitores</button>
+        </div>
+
+        @if (cargando)
+        {
+            <div class="fila-vacia"><span class="spinner-border spinner-border-sm me-2"></span> Cargando...</div>
+        }
+        else if (tab == "sesiones")
+        {
+            @if (!sesiones.Any())
+            {
+                <div class="fila-vacia"><i class="bi bi-inbox me-2"></i> No hay monitorías vigentes.</div>
+            }
+            else
+            {
+                <div class="tabla-monitorias">
+                    <div class="header-tabla-m">
+                        <span>Nombre</span><span>Monitor</span><span>Jornada</span><span>Modalidad</span><span>Horario</span><span>Inscritos</span>
+                    </div>
+                    @foreach (var s in sesiones)
+                    {
+                        <div class="fila-m">
+                            <span class="celda-fuerte">@s.Nombre</span>
+                            <span>@s.NombreMonitor</span>
+                            <span>@s.Jornada</span>
+                            <span>@s.Modalidad</span>
+                            <span>@s.HoraInicio.ToString("HH:mm")–@s.HoraFin.ToString("HH:mm")</span>
+                            <span>@s.TotalInscritos</span>
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else if (tab == "asistencias")
+        {
+            @if (!asistencias.Any())
+            {
+                <div class="fila-vacia"><i class="bi bi-inbox me-2"></i> No hay asistencias de monitoría dirigidas a ti.</div>
+            }
+            else
+            {
+                <div class="tabla-monitorias">
+                    <div class="header-tabla-m header-5">
+                        <span>Sesión</span><span>Aprendiz</span><span>Fecha</span><span>Estado</span><span>Para</span>
+                    </div>
+                    @foreach (var a in asistencias)
+                    {
+                        <div class="fila-m fila-5">
+                            <span class="celda-fuerte">@a.NombreSesion</span>
+                            <span>@a.NombreAprendiz</span>
+                            <span>@a.Fecha.ToString("dd/MM/yyyy")</span>
+                            <span class="badge-estado-m @ClaseAsistencia(a.Estado)">@a.Estado</span>
+                            <span>@a.NombreInstructorDestinatario</span>
+                        </div>
+                    }
+                </div>
+            }
+        }
+        else if (tab == "informes")
+        {
+            @if (!informes.Any())
+            {
+                <div class="fila-vacia"><i class="bi bi-inbox me-2"></i> No hay informes de monitoría dirigidos a ti.</div>
+            }
+            else
+            {
+                @foreach (var i in informes)
+                {
+                    <div class="tarjeta-informe">
+                        <div class="tarjeta-informe-head">
+                            <span class="celda-fuerte">@i.NombreSesion</span>
+                            <span class="informe-fecha">@i.FechaRegistro.ToString("dd/MM/yyyy HH:mm")</span>
+                        </div>
+                        <p class="informe-texto">@i.Texto</p>
+                        <p class="informe-aprendices"><strong>Aprendices:</strong> @string.Join(", ", i.Aprendices)</p>
+                    </div>
+                }
+            }
+        }
+        else if (tab == "monitores")
+        {
+            @if (SesionService.EsAdministrador)
+            {
+                <div class="panel-asignar">
+                    <h3>Asignar condición de Monitor</h3>
+                    <div class="campo-busqueda">
+                        <i class="bi bi-search"></i>
+                        <input placeholder="Buscar aprendiz por nombre o documento..."
+                               @bind="busquedaAprendiz" @bind:event="oninput" @onkeyup="BuscarAprendices" />
+                    </div>
+
+                    @if (buscandoAprendices)
+                    {
+                        <div class="fila-vacia"><span class="spinner-border spinner-border-sm me-2"></span> Buscando...</div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(busquedaAprendiz) && resultadosBusqueda.Any())
+                    {
+                        <div class="resultados-busqueda">
+                            @foreach (var r in resultadosBusqueda)
+                            {
+                                <div class="resultado-item">
+                                    <div class="nombre">
+                                        <div class="avatar-mini">@Iniciales(r.Nombres)</div>
+                                        <div class="nombre-info">
+                                            <span class="nombre-texto">@r.Nombres</span>
+                                            <span class="nombre-sub">@r.NumeroDocumento · @r.Estado</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn-nuevo btn-sm-m" @onclick="() => AsignarMonitor(r)">
+                                        <i class="bi bi-person-check"></i> Asignar
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(busquedaAprendiz))
+                    {
+                        <div class="fila-vacia">Sin resultados elegibles (deben estar En Formacion, sin patrocinio activo y sin ser ya monitores).</div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(errorMonitor))
+                    {
+                        <div class="alert alert-danger">@errorMonitor</div>
+                    }
+                </div>
+            }
+
+            @if (!monitores.Any())
+            {
+                <div class="fila-vacia"><i class="bi bi-inbox me-2"></i> No hay monitores registrados.</div>
+            }
+            else
+            {
+                <div class="tabla-monitorias">
+                    <div class="header-tabla-m @(SesionService.EsAdministrador ? "header-5" : "header-4")">
+                        <span>Aprendiz</span><span>Documento</span><span>Estado</span><span>Desde</span>
+                        @if (SesionService.EsAdministrador) { <span>Acciones</span> }
+                    </div>
+                    @foreach (var m in monitores)
+                    {
+                        <div class="fila-m @(SesionService.EsAdministrador ? "fila-5" : "fila-4")">
+                            <span class="celda-fuerte">@m.NombreAprendiz</span>
+                            <span>@m.NumeroDocumento</span>
+                            <span class="badge-estado-m @(m.Activo ? "activo" : "inactivo")">@(m.Activo ? "Activo" : "Inactivo")</span>
+                            <span>@m.FechaAsignacion.ToString("dd/MM/yyyy")</span>
+                            @if (SesionService.EsAdministrador)
+                            {
+                                <span>
+                                    @if (m.Activo)
+                                    {
+                                        <button class="btn-accion desactivar" title="Desactivar" @onclick="() => DesactivarMonitor(m)">
+                                            <i class="bi bi-toggle-on"></i>
+                                        </button>
+                                    }
+                                </span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</section>
+
+@code {
+    string tab = "sesiones";
+    bool cargando = true;
+    bool esError = false;
+    string mensaje = string.Empty;
+    string errorMonitor = string.Empty;
+
+    string busquedaAprendiz = string.Empty;
+    bool buscandoAprendices = false;
+    List<AprendizListadoDTO> resultadosBusqueda = [];
+
+    List<SesionMonitoriaDTO> sesiones = [];
+    List<AsistenciaMonitoriaDTO> asistencias = [];
+    List<InformeMonitoriaDTO> informes = [];
+    List<MonitorDTO> monitores = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        sesiones = await MonitoriaApi.ObtenerMonitoriasVigentesAsync(SesionService.IdUsuario);
+        cargando = false;
+    }
+
+    int? IdInstructorFiltro => SesionService.EsAdministrador ? null : SesionService.IdInstructor;
+
+    async Task AbrirAsistencias()
+    {
+        tab = "asistencias";
+        cargando = true;
+        asistencias = await MonitoriaApi.ObtenerAsistenciasRecibidasAsync(IdInstructorFiltro);
+        cargando = false;
+    }
+
+    async Task AbrirInformes()
+    {
+        tab = "informes";
+        cargando = true;
+        informes = await MonitoriaApi.ObtenerInformesRecibidosAsync(IdInstructorFiltro);
+        cargando = false;
+    }
+
+    async Task AbrirMonitores()
+    {
+        tab = "monitores";
+        cargando = true;
+        monitores = await MonitoriaApi.ObtenerMonitoresAsync();
+        cargando = false;
+    }
+
+    async Task BuscarAprendices()
+    {
+        if (string.IsNullOrWhiteSpace(busquedaAprendiz))
+        {
+            resultadosBusqueda = [];
+            return;
+        }
+
+        buscandoAprendices = true;
+        var esDocumento = busquedaAprendiz.All(char.IsDigit);
+        var resultado = await AprendizApi.FiltrarAprendicesAsync(
+            numeroFicha: null,
+            numeroDocumento: esDocumento ? busquedaAprendiz : null,
+            nombreAprendiz: esDocumento ? null : busquedaAprendiz);
+
+        var idsYaMonitores = monitores.Where(m => m.Activo).Select(m => m.IdAprendiz).ToHashSet();
+        resultadosBusqueda = resultado
+            .Where(r => r.Estado == "En Formacion" && !idsYaMonitores.Contains(r.IdAprendiz))
+            .Take(10)
+            .ToList();
+        buscandoAprendices = false;
+    }
+
+    async Task AsignarMonitor(AprendizListadoDTO aprendiz)
+    {
+        errorMonitor = string.Empty;
+        var (ok, msg) = await MonitoriaApi.AsignarMonitorAsync(new AsignarMonitorCommand { IdAprendiz = aprendiz.IdAprendiz });
+        if (!ok) { errorMonitor = msg; return; }
+
+        busquedaAprendiz = string.Empty;
+        resultadosBusqueda = [];
+        mensaje = $"{aprendiz.Nombres} ahora es Monitor.";
+        esError = false;
+        monitores = await MonitoriaApi.ObtenerMonitoresAsync();
+    }
+
+    async Task DesactivarMonitor(MonitorDTO m)
+    {
+        var (ok, msg) = await MonitoriaApi.DesactivarMonitorAsync(m.IdAprendiz);
+        esError = !ok;
+        mensaje = ok ? $"Se desactivó la condición de Monitor de {m.NombreAprendiz}." : msg;
+        if (ok) monitores = await MonitoriaApi.ObtenerMonitoresAsync();
+    }
+
+    string ClaseAsistencia(string estado) => estado switch
+    {
+        "Presente" => "activo",
+        "Ausente" => "inactivo",
+        _ => ""
+    };
+
+    static string Iniciales(string nombre)
+    {
+        var partes = nombre.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return partes.Length >= 2 ? $"{partes[0][0]}{partes[1][0]}".ToUpper()
+             : partes.Length == 1 && partes[0].Length > 0 ? partes[0][0].ToString().ToUpper()
+             : "?";
+    }
+}

@@ -1,0 +1,261 @@
+﻿@* NavMenu.razor *@
+@using AdsoLabs.Application.DTOs.Fichas
+@using AdsoLabs.Web.Services
+@using AdsoLabs.Web.Services.Api
+@using System.Threading.Tasks
+@inject FichaApiService FichaApiService
+@inject FichaStateService FichaState
+@inject SesionService SesionService
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand logo" href="home">
+            <img src="images/Logo.png" alt="Logo" />
+        </a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="sidebar nav-scrollable">
+    <nav class="flex-column">
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="home" Match="NavLinkMatch.All"
+                     ActiveClass="@(fichasOpen ? "" : "active")"
+                     onclick="document.querySelector('.navbar-toggler').click()">
+                <i class="bi bi-house-door"></i> Inicio
+            </NavLink>
+        </div>
+
+        @if (SesionService.EsAprendiz)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="perfil" Match="NavLinkMatch.All"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-person-circle"></i> Perfil
+                </NavLink>
+            </div>
+        }
+
+        @if (SesionService.EsInstructor || SesionService.EsAdministrador)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="@($"perfil-instructor/{SesionService.IdInstructor}")"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-person-badge"></i> Mi Perfil
+                </NavLink>
+            </div>
+        }
+
+        @if (SesionService.EsInstructor || SesionService.EsAdministrador)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="monitorias-admin" Match="NavLinkMatch.All"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-people-fill"></i> Monitorías
+                </NavLink>
+            </div>
+        }
+
+        @if (!SesionService.EsAprendiz)
+        {
+            <div class="nav-item px-3">
+                <div class="dropdown-toggle @(fichasOpen ? "open active-toggle" : "")"
+                     @onclick="ToggleFichas">
+                    <i class="bi bi-journal-bookmark"></i> Fichas
+                    <i class="bi bi-chevron-down nav-arrow"></i>
+                </div>
+                <ul class="fichas-submenu @(fichasOpen ? "open" : "")">
+                    @if (fichas is null || !fichas.Any())
+                    {
+                        <li class="text-muted px-3 py-2">
+                            No hay fichas disponibles
+                        </li>
+                    }
+                    else
+                    {
+                        @foreach (var f in fichas)
+                        {
+                            var numero = f.NumeroFicha;
+                            <li>
+                                <NavLink href="@($"fichas/{numero}")"
+                                         onclick="document.querySelector('.navbar-toggler').click()">
+                                    @numero
+                                </NavLink>
+                            </li>
+                        }
+                    }
+                </ul>
+            </div>
+        }
+
+        @if (SesionService.EsAdministrador)
+        {
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="importaciones"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-cloud-upload"></i> Importaciones
+                </NavLink>
+            </div>
+            
+        }
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="repositorio"
+                     ActiveClass="@(fichasOpen ? "" : "active")"
+                     onclick="document.querySelector('.navbar-toggler').click()">
+                <i class="bi bi-folder2-open"></i> Repositorio
+            </NavLink>
+        </div>
+
+        @if (SesionService.EsAdministrador)
+        {
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="competencias"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-patch-check"></i> Competencias
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="aprendiz"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-mortarboard"></i> Aprendiz
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="instructor"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-person-vcard"></i> Instructor
+                </NavLink>
+            </div>
+            
+        }
+
+        @if (!SesionService.EsAprendiz)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="asistencias"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-calendar-check"></i> Asistencias
+                </NavLink>
+            </div>
+
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="asistencias-patrocinados"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-building"></i> Patrocinados
+                </NavLink>
+            </div>
+        }
+
+        @if (SesionService.EsAdministrador)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="patrocinios"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-briefcase"></i> Patrocinios
+                </NavLink>
+            </div>
+        }
+
+        @if (!SesionService.EsAprendiz)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="reportes"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-bar-chart-line"></i> Reportes
+                </NavLink>
+            </div>
+        }
+
+        
+
+        @if (SesionService.EsAdministrador || SesionService.EsInstructor)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="prediccion-ia"
+                         ActiveClass="@(fichasOpen ? "" : "active")"
+                         onclick="document.querySelector('.navbar-toggler').click()">
+                    <i class="bi bi-stars"></i> Predicción IA
+                </NavLink>
+            </div>
+        }
+
+        <div class="nav-item px-3 cerrar-session">
+            <NavLink class="nav-link" href=""
+                     Match="NavLinkMatch.All"
+                     onclick="document.querySelector('.navbar-toggler').click()">
+                <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+            </NavLink>
+        </div>
+
+    </nav>
+</div>
+
+@inject NavigationManager Nav
+
+@code {
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarFichas();
+
+        // Suscripción al estado global
+        FichaState.OnChange += OnFichaChanged;
+
+        // Suscripción a cambios de navegación
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnFichaChanged()
+    {
+        await CargarFichas();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    async Task CargarFichas()
+    {
+        // Admins ven todas las fichas (idUsuario=0 omite el filtro por instructor).
+        // Instructores solo ven las fichas donde tienen resultados asignados.
+        fichas = await FichaApiService.ObtenerFichasAsync(SesionService.EsInstructor ? SesionService.IdUsuario : 0);
+    }
+
+	bool fichasOpen = false;
+
+	List<FichaDTO> fichas = new();
+
+    void OnLocationChanged(object sender, LocationChangedEventArgs e)
+    {
+        // Si la nueva ruta NO es de fichas, cierra el dropdown
+        if (!e.Location.Contains("fichas"))
+        {
+            fichasOpen = false;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    void ToggleFichas() => fichasOpen = !fichasOpen;
+
+}
